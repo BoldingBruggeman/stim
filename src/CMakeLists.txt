@@ -3,9 +3,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 # Selecting driver model
 
 if(GOTM_USE_ICE)
-add_library(gotm_stim)
-target_sources(gotm_stim
-            PRIVATE
+add_library(gotm_stim
             ${CMAKE_CURRENT_BINARY_DIR}/stim_version.F90
             drivers/gotm_stim.F90
            )
@@ -17,9 +15,7 @@ target_link_libraries(gotm_stim PRIVATE stim)
 endif(GOTM_USE_ICE)
 
 if(GETM_USE_ICE)
-add_library(getm_stim)
-target_sources(getm_stim
-            PRIVATE
+add_library(getm_stim
             drivers/getm_stim.F90
            )
 target_include_directories(getm_stim PUBLIC
