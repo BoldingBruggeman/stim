@@ -12,8 +12,8 @@
 !  calculation and also makes the proper initialisations.
 !
 ! !USES:
-!KB   use ice_variables
-   use ice_models
+!KB   use stim_variables
+   use stim_models
    IMPLICIT NONE
 !
    private
@@ -23,8 +23,8 @@
    integer, public :: ice_cover=0 ! 0=no ice, 1=frazil ice, 2=solid ice
 !
    interface init_ice
-      module procedure init_ice_nml
-!KB      module procedure init_ice_yaml
+      module procedure init_stim_nml
+!KB      module procedure init_stim_yaml
    end interface
 !
 !
@@ -47,7 +47,7 @@
 ! !IROUTINE: Initialisation of the ice variables
 !
 ! !INTERFACE:
-   subroutine init_ice_nml(namlst,fn)
+   subroutine init_stim_nml(namlst,fn)
 !
 ! !DESCRIPTION:
 !
@@ -85,7 +85,7 @@
 81 FATAL 'I could not read "ice" namelist'
    stop 'init_ice'
 
-   end subroutine init_ice_nml
+   end subroutine init_stim_nml
 !EOC
 
 #if 0
@@ -95,7 +95,7 @@
 ! !IROUTINE: Initialisation of the ice variables
 !
 ! !INTERFACE:
-   subroutine init_ice_yaml(S)
+   subroutine init_stim_yaml(S)
 !
 ! !DESCRIPTION:
 !
@@ -115,7 +115,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_ice_yaml'
+   LEVEL1 'init_stim_yaml'
    ice_model    = 0
    branch => settings_store%get_typed_child('ice')
    call branch%get(ice_model, 'ice_model', '' ) !&
@@ -124,7 +124,7 @@
    call branch%get(sensible_ice_water, 'sensible_ice_water','sensible heat flux ice/water','W',default=0._rk)
    LEVEL2 'done.'
    return
-   end subroutine init_ice_yaml
+   end subroutine init_stim_yaml
 !EOC
 #endif
 
@@ -162,22 +162,22 @@
          LEVEL1 'no ice'
 #ifdef STIM_LEBEDEV
       case(1)
-         call init_ice_lebedev(ice_cover)
+         call init_stim_lebedev(ice_cover)
 #endif
 #ifdef STIM_MYLAKE
       case(2)
-         call init_ice_mylake()
+         call init_stim_mylake()
 #endif
 #ifdef STIM_WINTON
       case(3)
          allocate(Tice(2))
-         call init_ice_winton(Ta)
+         call init_stim_winton(Ta)
 #endif
       case default
          stop 'invalid ice model'
    end select
 
-   call init_ice_variables(ice_model)
+   call init_stim_variables(ice_model)
 
    LEVEL2 'done.'
    return
@@ -234,15 +234,15 @@
          end if
 #ifdef STIM_LEBEDEV
       case(1)
-         call do_ice_lebedev(ice_cover,dt,Tw,S,Ta,precip)
+         call do_stim_lebedev(ice_cover,dt,Tw,S,Ta,precip)
 #endif
 #ifdef STIM_MYLAKE
       case(2)
-         call do_ice_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         call do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif
 #ifdef STIM_WINTON
       case(3)
-         call do_ice_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif
       case default
          stop 'invalid ice model'
@@ -290,5 +290,5 @@
    end module ice
 
 !-----------------------------------------------------------------------
-! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+! Copyright by the STIM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

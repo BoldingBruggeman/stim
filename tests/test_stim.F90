@@ -1,19 +1,12 @@
 !
-   program test_ice
+   program test_stim
 !
 ! !DESCRIPTION:
 !  program to test the ice models
 !
-!  To build:
-!  make test_ice
-!  To execute:
-!  ./test_ice
-!  To plot:
-!  python $GOTM_BASE/scr/plot_airsea.py
-!
 ! !USES:
-   use ice_variables
-   use ice_models
+   use stim_variables
+   use stim_models
    implicit none
 !
 ! !REVISION HISTORY:
@@ -42,9 +35,9 @@ write(*,*) 'Ice models included:'
    write(*,*) 'Winton:  off'
 #endif
 
-   end program test_ice
+   end program test_stim
 !EOC
 
 !-----------------------------------------------------------------------
-! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+! Copyright by the STIM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

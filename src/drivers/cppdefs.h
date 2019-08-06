@@ -1,5 +1,5 @@
 ! This file is include in all .F90 files and contains very important
-! definitions. Infact GOTM will not compile when this file is not
+! definitions. Infact STIM will not compile when this file is not
 ! in a correct format.
 ! KBK 20000220
 

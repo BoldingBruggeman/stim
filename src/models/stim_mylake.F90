@@ -4,22 +4,22 @@
 ! !MODULE: 'mylake' ice module
 !
 ! !INTERFACE:
-   module ice_mylake
+   module stim_mylake
 !
 ! !DESCRIPTION:
 !
 ! !USES:
-   use ice_variables, only: rk
-   use ice_variables, only: albedo_ice, attenuation_ice
-   use ice_variables, only: Cw,K_ice,L_ice,rho_ice
-   use ice_variables, only: Tf,Tice_surface
-   use ice_variables, only: Hice,Hfrazil,dHis,dHib
+   use stim_variables, only: rk
+   use stim_variables, only: albedo_ice, attenuation_ice
+   use stim_variables, only: Cw,K_ice,L_ice,rho_ice
+   use stim_variables, only: Tf,Tice_surface
+   use stim_variables, only: Hice,Hfrazil,dHis,dHib
    IMPLICIT NONE
 !  Default all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_ice_mylake, do_ice_mylake, clean_ice_mylake
+   public init_stim_mylake, do_stim_mylake, clean_stim_mylake
 !
 ! !PUBLIC DATA MEMBERS:
 !
@@ -40,7 +40,7 @@
 ! !IROUTINE: Initialisation of the ice variables
 !
 ! !INTERFACE:
-   subroutine init_ice_mylake()
+   subroutine init_stim_mylake()
 !
 ! !DESCRIPTION:
 !
@@ -63,7 +63,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL2 'init_ice_mylake'
+   !LEVEL2 'init_stim_mylake'
 
 !  Read namelist from file.
 #if 0
@@ -88,7 +88,7 @@
    stop 'init_ice'
 #endif
 
-   end subroutine init_ice_mylake
+   end subroutine init_stim_mylake
 !EOC
 
 !-----------------------------------------------------------------------
@@ -97,7 +97,7 @@
 ! !IROUTINE: do the 'mylake' ice calculations
 !
 ! !INTERFACE:
-   subroutine do_ice_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+   subroutine do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 !
 ! !DESCRIPTION:
 !
@@ -189,7 +189,7 @@
    end if
 
    return
-   end subroutine do_ice_mylake
+   end subroutine do_stim_mylake
 !EOC
 
 !-----------------------------------------------------------------------
@@ -198,7 +198,7 @@
 ! !IROUTINE: Cleaning up the 'mylake' ice variables
 !
 ! !INTERFACE:
-   subroutine clean_ice_mylake()
+   subroutine clean_stim_mylake()
 !
 ! !DESCRIPTION:
 !
@@ -215,16 +215,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL2 'clean_ice_mylake'
+   !LEVEL2 'clean_stim_mylake'
 
    return
-   end subroutine clean_ice_mylake
+   end subroutine clean_stim_mylake
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module ice_mylake
+   end module stim_mylake
 
 !-----------------------------------------------------------------------
-! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+! Copyright by the STIM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

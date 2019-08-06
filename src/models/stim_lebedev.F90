@@ -4,20 +4,20 @@
 ! !MODULE: 'lebedev' ice module
 !
 ! !INTERFACE:
-   module ice_lebedev
+   module stim_lebedev
 !
 ! !DESCRIPTION:
 !  https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016JC012199
 !
 ! !USES:
-   use ice_variables, only: rk, Hice, dHis, dHib, Tf, fdd
-   use ice_variables, only: rho_ice, L_ice, sensible_ice_water
+   use stim_variables, only: rk, Hice, dHis, dHib, Tf, fdd
+   use stim_variables, only: rho_ice, L_ice, sensible_ice_water
    IMPLICIT NONE
 !  Default all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_ice_lebedev, do_ice_lebedev, clean_ice_lebedev
+   public init_stim_lebedev, do_stim_lebedev, clean_stim_lebedev
 !
 ! !PUBLIC DATA MEMBERS:
 !
@@ -38,7 +38,7 @@
 ! !IROUTINE: Initialisation of the ice variables
 !
 ! !INTERFACE:
-   subroutine init_ice_lebedev(ice_cover)
+   subroutine init_stim_lebedev(ice_cover)
 !
 ! !DESCRIPTION:
 !
@@ -69,7 +69,7 @@
       ice_cover = 0
    end if
    return
-   end subroutine init_ice_lebedev
+   end subroutine init_stim_lebedev
 !EOC
 
 !-----------------------------------------------------------------------
@@ -78,7 +78,7 @@
 ! !IROUTINE: do the 'lebedev' ice calculations
 !
 ! !INTERFACE:
-   subroutine do_ice_lebedev(ice_cover,dt,Tw,S,Ta,precip)
+   subroutine do_stim_lebedev(ice_cover,dt,Tw,S,Ta,precip)
 !
 ! !DESCRIPTION:
 !
@@ -162,7 +162,7 @@
 #endif
 
    return
-   end subroutine do_ice_lebedev
+   end subroutine do_stim_lebedev
 !EOC
 
 !-----------------------------------------------------------------------
@@ -171,7 +171,7 @@
 ! !IROUTINE: Cleaning up the 'lebedev' ice variables
 !
 ! !INTERFACE:
-   subroutine clean_ice_lebedev()
+   subroutine clean_stim_lebedev()
 !
 ! !DESCRIPTION:
 !
@@ -188,19 +188,19 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL2 'clean_ice_lebedev'
+   !LEVEL2 'clean_stim_lebedev'
 
    !LEVEL2 'de-allocation ice memory ...'
    !LEVEL2 'done.'
 
    return
-   end subroutine clean_ice_lebedev
+   end subroutine clean_stim_lebedev
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module ice_lebedev
+   end module stim_lebedev
 
 !-----------------------------------------------------------------------
-! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+! Copyright by the STIM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

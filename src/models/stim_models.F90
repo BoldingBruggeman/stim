@@ -4,20 +4,20 @@
 ! !MODULE: ice model module
 !
 ! !INTERFACE:
-   module ice_models
+   module stim_models
 !
 ! !DESCRIPTION:
 !
 ! !USES:
-   use ice_variables
+   use stim_variables
 #ifdef STIM_LEBEDEV
-   use ice_lebedev, only: init_ice_lebedev, do_ice_lebedev, clean_ice_lebedev
+   use stim_lebedev, only: init_stim_lebedev, do_stim_lebedev, clean_stim_lebedev
 #endif
 #ifdef STIM_MYLAKE
-   use ice_mylake, only: init_ice_mylake, do_ice_mylake, clean_ice_mylake
+   use stim_mylake, only: init_stim_mylake, do_stim_mylake, clean_stim_mylake
 #endif
 #ifdef STIM_WINTON
-   use ice_winton, only: init_ice_winton, do_ice_winton
+   use stim_winton, only: init_stim_winton, do_stim_winton
 #endif
    IMPLICIT NONE
 !
@@ -25,8 +25,8 @@
 
 !-----------------------------------------------------------------------
 
-   end module ice_models
+   end module stim_models
 
 !-----------------------------------------------------------------------
-! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+! Copyright by the STIM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

@@ -1,10 +1,10 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: ice_variables - global variables for the ice models
+! !MODULE: stim_variables - global variables for the ice models
 !
 ! !INTERFACE:
-   module ice_variables
+   module stim_variables
 !
 ! !DESCRIPTION:
 !
@@ -50,10 +50,10 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: init_ice_variables - initialise 2D related stuff.
+! !IROUTINE: init_stim_variables - initialise 2D related stuff.
 !
 ! !INTERFACE:
-   subroutine init_ice_variables(ice_model)
+   subroutine init_stim_variables(ice_model)
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -67,27 +67,27 @@
 #ifdef DEBUG
    integer, save :: Ncall = 0
    Ncall = Ncall+1
-   write(debug,*) 'init_ice_variables() # ',Ncall
+   write(debug,*) 'init_stim_variables() # ',Ncall
 #endif
 
-   !LEVEL2 'init_ice_variables'
+   !LEVEL2 'init_stim_variables'
    !LEVEL3 'using ice model ',ice_model
 
 #ifdef DEBUG
-   write(debug,*) 'Leaving init_ice_variables()'
+   write(debug,*) 'Leaving init_stim_variables()'
    write(debug,*)
 #endif
    return
-   end subroutine init_ice_variables
+   end subroutine init_stim_variables
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: clean_ice_variables - cleanup after
+! !IROUTINE: clean_stim_variables - cleanup after
 !
 ! !INTERFACE:
-   subroutine clean_ice_variables()
+   subroutine clean_stim_variables()
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -100,12 +100,12 @@
 !BOC
 
    return
-   end subroutine clean_ice_variables
+   end subroutine clean_stim_variables
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module ice_variables
+   end module stim_variables
 
 !-----------------------------------------------------------------------
 ! Copyright (C) 2019 - Karsten Bolding (BB)                            !

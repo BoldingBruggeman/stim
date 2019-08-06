@@ -1,72 +1,69 @@
-#add_library(ice OBJECT
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 
 # Selecting driver model
 
 if(GOTM_USE_ICE)
-add_library(gotm_ice)
-target_sources(gotm_ice
+add_library(gotm_stim)
+target_sources(gotm_stim
             PRIVATE
-            ${CMAKE_CURRENT_BINARY_DIR}/ice_version.F90
-            drivers/gotm_ice.F90
+            ${CMAKE_CURRENT_BINARY_DIR}/stim_version.F90
+            drivers/gotm_stim.F90
            )
-target_include_directories(gotm_ice PUBLIC
+target_include_directories(gotm_stim PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/modules>
 )
-target_link_libraries(gotm_ice PRIVATE ice)
+target_link_libraries(gotm_stim PRIVATE stim)
 endif(GOTM_USE_ICE)
 
 if(GETM_USE_ICE)
-add_library(getm_ice)
-target_sources(getm_ice
+add_library(getm_stim)
+target_sources(getm_stim
             PRIVATE
-            drivers/getm_ice.F90
+            drivers/getm_stim.F90
            )
-target_include_directories(getm_ice PUBLIC
+target_include_directories(getm_stim PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/modules>
 )
-target_link_libraries(getm_ice PRIVATE ice)
+target_link_libraries(getm_stim PRIVATE stim)
 endif(GETM_USE_ICE)
 
 if(STIM_LEBEDEV)
-   set(SRC_LEBEDEV models/ice_lebedev.F90)
+   set(SRC_LEBEDEV models/stim_lebedev.F90)
 endif(STIM_LEBEDEV)
 if(STIM_MYLAKE)
-   set(SRC_MYLAKE models/ice_mylake.F90)
+   set(SRC_MYLAKE models/stim_mylake.F90)
 endif(STIM_MYLAKE)
 if(STIM_WINTON)
-   set(SRC_WINTON models/ice_thm.F90 models/ice_winton.F90)
+   set(SRC_WINTON models/ice_thm.F90 models/stim_winton.F90)
 endif(STIM_WINTON)
 
-add_library(ice)
-target_sources(ice
-            PRIVATE
-            models/ice_variables.F90
-            models/ice_models.F90
+add_library(stim
+            models/stim_variables.F90
+            models/stim_models.F90
             ${SRC_LEBEDEV}
             ${SRC_MYLAKE}
             ${SRC_WINTON}
            )
 if(STIM_LEBEDEV)
-   target_compile_definitions(ice PUBLIC STIM_LEBEDEV)
+   target_compile_definitions(stim PUBLIC STIM_LEBEDEV)
 endif(STIM_LEBEDEV)
 if(STIM_MYLAKE)
-   target_compile_definitions(ice PUBLIC STIM_MYLAKE)
+   target_compile_definitions(stim PUBLIC STIM_MYLAKE)
 endif(STIM_MYLAKE)
 if(STIM_WINTON)
-   target_compile_definitions(ice PUBLIC STIM_WINTON)
+   target_compile_definitions(stim PUBLIC STIM_WINTON)
 endif(STIM_WINTON)
-target_include_directories(ice PUBLIC
+target_include_directories(stim PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/modules>
 )
 
 install(FILES
-#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/ice.mod
-#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/ice_models.mod
-#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/ice_variables.mod
+#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/stim.mod
+#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/stim_models.mod
+#KB        ${CMAKE_CURRENT_BINARY_DIR}/modules/stim_variables.mod
         DESTINATION include)
-install(TARGETS ice DESTINATION lib)
+install(TARGETS stim DESTINATION lib)

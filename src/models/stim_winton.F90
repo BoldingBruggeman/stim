@@ -1,11 +1,11 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: ice_winton --- Winton thermodynamic ice model
-! \label{sec:ice_winton}
+! !MODULE: stim_winton --- Winton thermodynamic ice model
+! \label{sec:stim_winton}
 !
 ! !INTERFACE:
-   module ice_winton
+   module stim_winton
 !
 ! !DESCRIPTION:
 !  The model consists of a zero heat capacity snow layer overlying two equally
@@ -48,7 +48,7 @@
 !  Ocean Model.
 !
 ! !USES:
-   use ice_variables
+   use stim_variables
    use ice_thm_mod
    IMPLICIT NONE
 !
@@ -56,8 +56,8 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public                              :: init_ice_winton
-   public                              :: do_ice_winton
+   public                              :: init_stim_winton
+   public                              :: do_stim_winton
 !KB   public                              :: ice_optics
 !
 ! !PRIVATE DATA MEMBERS:
@@ -78,8 +78,8 @@
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_winton}
 !
 ! !INTERFACE:
-!KB   subroutine init_ice_winton(ice_cover,dz,dt,Tw,S,Ta,precip)
-   subroutine init_ice_winton(Ta)
+!KB   subroutine init_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip)
+   subroutine init_stim_winton(Ta)
 !
 ! !DESCRIPTION:
 !
@@ -139,7 +139,7 @@
 
    return
 !EOC
-end subroutine init_ice_winton
+end subroutine init_stim_winton
 
 !-----------------------------------------------------------------------
 !BOP
@@ -147,7 +147,7 @@ end subroutine init_ice_winton
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_winton}
 !
 ! !INTERFACE:
-   subroutine do_ice_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+   subroutine do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 !KB   subroutine do_ice_winton(dt,h,S,sst,T,hs,hi,Ti,surface_melt,bottom_melt)
 !
 ! !DESCRIPTION:
@@ -215,7 +215,7 @@ end subroutine init_ice_winton
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL0 'do_ice_winton'
+   !LEVEL0 'do_stim_winton'
 
    fb = 0._rk; I = 100._rk
 
@@ -260,11 +260,11 @@ write(*,*) 'M  ',Ms,Mb
 
    return
 
-end subroutine do_ice_winton
+end subroutine do_stim_winton
 
 !-----------------------------------------------------------------------
 
-   end module ice_winton
+   end module stim_winton
 
 !-----------------------------------------------------------------------
 ! Copyright by the GETM-team under the GNU Public License - www.gnu.org
