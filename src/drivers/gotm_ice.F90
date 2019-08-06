@@ -160,15 +160,15 @@
    select case (ice_model)
       case(0)
          LEVEL1 'no ice'
-#ifdef ICE_LEBEDEV
+#ifdef STIM_LEBEDEV
       case(1)
          call init_ice_lebedev(ice_cover)
 #endif
-#ifdef ICE_MYLAKE
+#ifdef STIM_MYLAKE
       case(2)
          call init_ice_mylake()
 #endif
-#ifdef ICE_WINTON
+#ifdef STIM_WINTON
       case(3)
          allocate(Tice(2))
          call init_ice_winton(Ta)
@@ -232,15 +232,15 @@
             Hice = _ZERO_
             ice_cover = 0
          end if
-#ifdef ICE_LEBEDEV
+#ifdef STIM_LEBEDEV
       case(1)
          call do_ice_lebedev(ice_cover,dt,Tw,S,Ta,precip)
 #endif
-#ifdef ICE_MYLAKE
+#ifdef STIM_MYLAKE
       case(2)
          call do_ice_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif
-#ifdef ICE_WINTON
+#ifdef STIM_WINTON
       case(3)
          call do_ice_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif

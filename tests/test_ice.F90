@@ -26,17 +26,17 @@
 !BOC
 
 write(*,*) 'Ice models included:'
-#ifdef ICE_LEBEDEV
+#ifdef STIM_LEBEDEV
    write(*,*) 'Lebedev: on'
 #else
    write(*,*) 'Lebedev: off'
 #endif
-#ifdef ICE_MYLAKE
+#ifdef STIM_MYLAKE
    write(*,*) 'MyLake:  on'
 #else
    write(*,*) 'MyLake:  off'
 #endif
-#ifdef ICE_WINTON
+#ifdef STIM_WINTON
    write(*,*) 'Winton:  on'
 #else
    write(*,*) 'Winton:  off'

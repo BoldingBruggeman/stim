@@ -31,15 +31,15 @@ target_include_directories(getm_ice PUBLIC
 target_link_libraries(getm_ice PRIVATE ice)
 endif(GETM_USE_ICE)
 
-if(ICE_LEBEDEV)
+if(STIM_LEBEDEV)
    set(SRC_LEBEDEV models/ice_lebedev.F90)
-endif(ICE_LEBEDEV)
-if(ICE_MYLAKE)
+endif(STIM_LEBEDEV)
+if(STIM_MYLAKE)
    set(SRC_MYLAKE models/ice_mylake.F90)
-endif(ICE_MYLAKE)
-if(ICE_WINTON)
+endif(STIM_MYLAKE)
+if(STIM_WINTON)
    set(SRC_WINTON models/ice_thm.F90 models/ice_winton.F90)
-endif(ICE_WINTON)
+endif(STIM_WINTON)
 
 add_library(ice)
 target_sources(ice
@@ -50,15 +50,15 @@ target_sources(ice
             ${SRC_MYLAKE}
             ${SRC_WINTON}
            )
-if(ICE_LEBEDEV)
-   target_compile_definitions(ice PUBLIC ICE_LEBEDEV)
-endif(ICE_LEBEDEV)
-if(ICE_MYLAKE)
-   target_compile_definitions(ice PUBLIC ICE_MYLAKE)
-endif(ICE_MYLAKE)
-if(ICE_WINTON)
-   target_compile_definitions(ice PUBLIC ICE_WINTON)
-endif(ICE_WINTON)
+if(STIM_LEBEDEV)
+   target_compile_definitions(ice PUBLIC STIM_LEBEDEV)
+endif(STIM_LEBEDEV)
+if(STIM_MYLAKE)
+   target_compile_definitions(ice PUBLIC STIM_MYLAKE)
+endif(STIM_MYLAKE)
+if(STIM_WINTON)
+   target_compile_definitions(ice PUBLIC STIM_WINTON)
+endif(STIM_WINTON)
 target_include_directories(ice PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules>
