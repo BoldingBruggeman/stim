@@ -170,8 +170,16 @@
 #endif
 #ifdef STIM_WINTON
       case(3)
+#if 0
          allocate(Tice(2))
          call init_stim_winton(Ta)
+#else
+         LEVEL0 "Winton model is compiled - but execution is disabled"
+         LEVEL0 "change line 173 in gotm_stim.F90 - then recompile - "
+         LEVEL0 "then do some work to make the Winton ice model work ...."
+         LEVEL0 ".... in STIM"
+         stop 'post_init_ice(): init_stim_winton()'
+#endif
 #endif
       case default
          stop 'invalid ice model'
