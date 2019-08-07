@@ -18,6 +18,7 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 #[[---
+option(STIM_EMBED_VERSION "Include Git version info" "ON")
 if(STIM_EMBED_VERSION)
    add_custom_target(version ALL
       ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/src/stim_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/src/stim_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
@@ -37,4 +38,3 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 install(EXPORT stimConfig DESTINATION cmake)
-
