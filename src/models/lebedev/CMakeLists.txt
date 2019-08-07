@@ -1,4 +1,3 @@
-message("AAAA" ${STIM_LEBEDEV})
 if(STIM_LEBEDEV)
    target_sources(stim 
        PRIVATE

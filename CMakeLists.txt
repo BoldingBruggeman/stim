@@ -34,7 +34,9 @@ option(STIM_LEBEDEV "Lebedev ICE model" ON)
 option(STIM_MYLAKE "MyLake ICE model" ON)
 option(STIM_WINTON "Winton ICE model" ON)
 
-add_subdirectory(src)
-add_subdirectory(tests)
+include(src/CMakeLists.txt)
+include(tests/CMakeLists.txt)
+#add_subdirectory(src)
+#add_subdirectory(tests)
 
 install(EXPORT stimConfig DESTINATION cmake)

@@ -6,7 +6,7 @@ target_sources(gotm_stim
 target_include_directories(gotm_stim
     PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/modules>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/modules>
 )
 target_link_libraries(gotm_stim PRIVATE stim)
 
