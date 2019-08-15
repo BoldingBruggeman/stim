@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1.3)
 
 # Create main project.
 project(stim VERSION 0.1.0 LANGUAGES Fortran)
@@ -20,7 +20,7 @@ endif()
 #[[---
 option(STIM_EMBED_VERSION "Include Git version info" "ON")
 if(STIM_EMBED_VERSION)
-   add_custom_target(version ALL
+   add_custom_target(stim_version ALL
       ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/src/stim_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/src/stim_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Retrieving description of last ICE commit..."
