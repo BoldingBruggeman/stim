@@ -12,7 +12,6 @@
 !  calculation and also makes the proper initialisations.
 !
 ! !USES:
-!KB   use stim_variables
    use stim_models
    IMPLICIT NONE
 !
@@ -23,10 +22,20 @@
    integer, public :: ice_cover=0 ! 0=no ice, 1=frazil ice, 2=solid ice
 !
    interface init_ice
-      module procedure init_stim_nml
-!KB      module procedure init_stim_yaml
+      module procedure init_stim_yaml
    end interface
-!
+
+   interface post_init_ice
+      module procedure post_init_stim
+   end interface
+
+   interface do_ice
+      module procedure do_stim
+   end interface
+
+   interface clean_ice
+      module procedure clean_stim
+   end interface
 !
 ! !PUBLIC DATA MEMBERS:
 
@@ -47,55 +56,7 @@
 ! !IROUTINE: Initialisation of the ice variables
 !
 ! !INTERFACE:
-   subroutine init_stim_nml(namlst,fn)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                      :: namlst
-   character(len=*), intent(in)             :: fn
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
-   integer                   :: rc
-   namelist /ice/  ice_model,Hice,sensible_ice_water
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_ice'
-   ice_model    = 0
-
-!  Read namelist from file.
-   open(namlst,file=fn,status='old',action='read',err=80)
-   LEVEL2 'reading ice namelists..'
-   read(namlst,nml=ice,err=81)
-   close (namlst)
-   LEVEL2 'done.'
-
-   return
-80 FATAL 'I could not open: ',trim(fn)
-   stop 'init_ice'
-81 FATAL 'I could not read "ice" namelist'
-   stop 'init_ice'
-
-   end subroutine init_stim_nml
-!EOC
-
-#if 0
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the ice variables
-!
-! !INTERFACE:
-   subroutine init_stim_yaml(S)
+   subroutine init_stim_yaml()
 !
 ! !DESCRIPTION:
 !
@@ -104,7 +65,6 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                     :: S
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -112,21 +72,26 @@
 !  See log for the ice module
 !
 ! !LOCAL VARIABLES:
+   class (type_gotm_settings), pointer :: branch
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_stim_yaml'
    ice_model    = 0
-   branch => settings_store%get_typed_child('ice')
-   call branch%get(ice_model, 'ice_model', '' ) !&
-                !options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
+   branch => settings_store%get_typed_child('surface/ice')
+   call branch%get(ice_model, 'ice_model', '', default=0, &
+                   options=&
+                   (/type_option(0, 'None'), &
+                     type_option(1, 'Lebedev (1938)'), &
+                     type_option(2, 'MyLake'), &
+                     type_option(3, 'Winton')/))
    call branch%get(Hice, 'Hice', 'total ice thickness', 'm',default=0._rk)
-   call branch%get(sensible_ice_water, 'sensible_ice_water','sensible heat flux ice/water','W',default=0._rk)
+   call branch%get(sensible_ice_water, 'sensible_ice_water', &
+                   'sensible heat flux ice/water','W',default=0._rk)
    LEVEL2 'done.'
    return
    end subroutine init_stim_yaml
 !EOC
-#endif
 
 !-----------------------------------------------------------------------
 !BOP
@@ -134,7 +99,7 @@
 ! !IROUTINE: Initialise the air--sea interaction module \label{sec:init-air-sea}
 !
 ! !INTERFACE:
-   subroutine post_init_ice(Ta,S)
+   subroutine post_init_stim(Ta,S)
 !
 ! !DESCRIPTION:
 ! !USES:
@@ -149,7 +114,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'post_init_ice'
+   LEVEL1 'post_init_stim'
 
    if(Hice .gt. _ZERO_) then
       ice_cover=2
@@ -178,7 +143,7 @@
          LEVEL0 "change line 173 in gotm_stim.F90 - then recompile - "
          LEVEL0 "then do some work to make the Winton ice model work ...."
          LEVEL0 ".... in STIM"
-         stop 'post_init_ice(): init_stim_winton()'
+         stop 'post_init_stim(): init_stim_winton()'
 #endif
 #endif
       case default
@@ -189,7 +154,7 @@
 
    LEVEL2 'done.'
    return
-   end subroutine post_init_ice
+   end subroutine post_init_stim
 !EOC
 
 !-----------------------------------------------------------------------
@@ -198,7 +163,7 @@
 ! !IROUTINE: do the ice calculations
 !
 ! !INTERFACE:
-   subroutine do_ice(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 !
 ! !DESCRIPTION:
 !
@@ -257,7 +222,7 @@
    end select
 
    return
-   end subroutine do_ice
+   end subroutine do_stim
 !EOC
 
 !-----------------------------------------------------------------------
@@ -266,7 +231,7 @@
 ! !IROUTINE: Cleaning up the mean flow variables
 !
 ! !INTERFACE:
-   subroutine clean_ice()
+   subroutine clean_stim()
 !
 ! !DESCRIPTION:
 !  De-allocates all memory allocated via init\_ice()
@@ -290,7 +255,7 @@
    LEVEL2 'done.'
 
    return
-   end subroutine clean_ice
+   end subroutine clean_stim
 !EOC
 
 !-----------------------------------------------------------------------
