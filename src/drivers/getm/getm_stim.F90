@@ -125,7 +125,7 @@
    ice_model    = 0
    branch => settings_store%get_typed_child('ice')
    call branch%get(ice_model, 'ice_model', '' ) !&
-                !options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
+                !options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
    call branch%get(Hice, 'Hice', 'total ice thickness', 'm',default=0._rk)
    call branch%get(sensible_ice_water, 'sensible_ice_water','sensible heat flux ice/water','W',default=0._rk)
    LEVEL2 'done.'
