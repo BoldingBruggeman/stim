@@ -116,7 +116,7 @@
 !BOC
    LEVEL1 'post_init_stim'
 
-   if(Hice .gt. _ZERO_) then
+   if(Hice .gt. _ZERO_ .and. ice_model /= 0) then
       ice_cover=2
    end if
 
@@ -200,10 +200,8 @@
          if (Tw .lt. Tf) then
             Tw = Tf
             Hice = 0.1
-            ice_cover = 2
          else
             Hice = _ZERO_
-            ice_cover = 0
          end if
 #ifdef STIM_LEBEDEV
       case(1)
