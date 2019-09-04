@@ -8,6 +8,8 @@ endif(GOTM_USE_STIM)
 
 include(${CMAKE_CURRENT_LIST_DIR}/models/CMakeLists.txt)
 
+set_property(TARGET stim PROPERTY FOLDER stim)
+
 install(TARGETS stim
         EXPORT stimConfig
         LIBRARY DESTINATION lib

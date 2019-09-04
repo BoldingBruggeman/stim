@@ -4,6 +4,7 @@ target_sources(gotm_stim
     ${CMAKE_CURRENT_LIST_DIR}/gotm_stim.F90
 )
 set_property(TARGET gotm_stim PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set_property(TARGET gotm_stim PROPERTY FOLDER stim)
 target_include_directories(gotm_stim
     PUBLIC
         $<INSTALL_INTERFACE:include>
