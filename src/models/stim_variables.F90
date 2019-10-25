@@ -35,6 +35,7 @@
    real(rk), target, public :: albedo_ice = 0._rk
    real(rk), target, public :: attenuation_ice = 0._rk
    real(rk), target, public :: sensible_ice_water = 0._rk
+   real(rk), target, public :: transmissivity = 1._rk
 
    ! Lebedev
    real(rk), target, public :: fdd

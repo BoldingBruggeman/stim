@@ -58,11 +58,13 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public                              :: init_stim_winton
    public                              :: do_stim_winton
-!KB   public                              :: ice_optics
 !
 ! !PRIVATE DATA MEMBERS:
    real(rk), pointer :: Ts,T1,T2
    real(rk), pointer :: hi,hs,dh1,dh2
+   real(rk), pointer :: trn
+   real(rk)          :: pen
+   real(rk)        ::  tmelt=0._rk,bmelt=0._rk
 !
 ! !REVISION HISTORY:
 !  Original author: Michael Winton
@@ -97,41 +99,18 @@
 #endif
 !
 ! !LOCAL VARIABLES:
-#if 0
-   real(rk)        :: Tf    ! seawater freezing temperature (deg-C)
-   real(rk)        :: fb    ! heat flux from ocean to ice bottom (W/m^2)
-   real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
-   real(rk)        :: evap  ! evaporation of ice (m/s)
-   real(rk)        :: snow
-   real(rk)        :: trn, pen
-   real(rk)        :: dtemp
-   real(rk)        :: rho_0 = 1025.
-   logical         :: has_ice
-!
-   real(rk), pointer :: Ts,T1,T2,hi,hs
-   real(rk)        :: A, B, dts=0.01
-   real(rk)        :: qh,qe,qb
-!
-   real(rk)        ::  K12,K32
-   real(rk)        ::  A1,B1,C1
-   real(rk)        ::  Ms,Mb
-   real(rk)        ::  h1,h2
-   real(rk)        ::  dhs
-   real(rk)        ::  T1new,T2new
-#endif
 !
 ! !LOCAL PARAMETERS:
-   real(rk)        :: kelvin=273.16 ! absolute zero
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
+   trn => transmissivity
    Ts => Tice_surface
+   Ts = Ta
    T1 => Tice(1)
-   T1 = Tf
+   T1 = Ta
    T2 => Tice(2)
    T2 = Tf
-!   Tf => Tf
    hs => Hsnow
    hi => Hice
    dh1 => dHis
@@ -194,69 +173,61 @@ end subroutine init_stim_winton
    real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: snow
-   real(rk)        :: trn, pen
-   real(rk)        :: dtemp
-   real(rk)        :: rho_0 = 1025.
-   logical         :: has_ice
 !
    real(rk)        :: A, B, dts=0.01
-   real(rk)        :: qh,qe,qb
+   real(rk)        :: qe,qh,qb
 !
-   real(rk)        ::  K12,K32
-   real(rk)        ::  A1,B1,C1
-   real(rk)        ::  Ms,Mb
-   real(rk)        ::  h1,h2
-   real(rk), pointer ::  dh1,dh2
-   real(rk)        ::  dhs
-   real(rk)        ::  T1new,T2new
+   real(rk)        :: h1,h2
+   real(rk)        :: ts_new
+   real(rk)        :: frazil
+   real(rk)        :: heat_to_ocn, h2o_to_ocn, h2o_from_ocn, snow_to_ice
 !
 ! !LOCAL PARAMETERS:
-   real(rk)        :: kelvin=273.16 ! absolute zero
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    !LEVEL0 'do_stim_winton'
+   fb = 10._rk;
+   I = Qsw
 
-   fb = 0._rk; I = 100._rk
+tmelt = 0.
+bmelt = 0.
 
 !  Calculate seawater freezing temperature
    Tf = -0.0575_rk*S
    h1 = hi/2._rk
    h2 = h1
 
-#if 0
    call ice_optics(albedo_ice, pen, trn, hs, hi, ts, Tf)
-#endif
 
 ! check this out
-   call Qfluxes(Ts,Qh,qh,qb)
-   A = qh+qe-qb ! (7-)
-   call Qfluxes(Ts+dts,qh,qh,qb)
-   B = qh+qe-qb
+   call Qfluxes(Ts,qe,qh,qb)
+   A = -(qe+qh+qb) ! (7-)
+   call Qfluxes(Ts+dts,qe,qh,qb)
+   B = -(qe+qh+qb)
    B = (B-A)/dts ! (8)
    A = A+I - Ts*B ! (-7)
 
-write(*,*) 'ALB ',albedo_ice,pen,trn
-
-!KB   call ice3lay_temp()
-write(*,*) 'AAA ',hi,t1,t2
 !https://github.com/mom-ocean/MOM5/blob/08266af73b04d2334be4a52d0c45c174f447cee4/src/ice_sis/ice_model.F90
 !                                      hf hfd 
-   call ice3lay_temp(0._rk,hi,t1,t2,ts,A,B,I,Tf,fb,dt,Ms,Mb)
-#if 1
-write(*,*) 'AB ',A,B
-write(*,*) 'Hi ',hi
-write(*,*) 'T  ',t1,t2,ts
-write(*,*) 'M  ',Ms,Mb
-#endif
-!KBstop 'egon'
+   call ice3lay_temp(hs,hi,t1,t2,ts_new,A,B,I,Tf,fb,dt,tmelt,bmelt)
+   ts = ts_new
+write(*,*) 'MELT ',tmelt,bmelt,hs
 
-#if 0
+#if 1
    call ice3lay_resize(hs, hi, t1, t2, snow, frazil, evap, tmelt, bmelt, &
-                       tfw, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
-                       snow_to_ice, bablt)
+                       tf, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
+                       snow_to_ice)
+!                       snow_to_ice, bablt)
 !   call e_to_melt(hs, h1, t1, h2, t2)
+write(*,*) 'CC ',heat_to_ocn, h2o_to_ocn, h2o_from_ocn
 #endif
+hs = 0._rk
+   if (hi .gt. 0._rk) then
+      ice_cover = 2
+   else
+      ice_cover = 0
+   end if
 
    return
 
