@@ -77,12 +77,12 @@
 #endif
 
    Tice => Tice_surface
-   albedo => albedo_ice
-   attenuation => attenuation_ice
+!KB   albedo => albedo_ice
+!KB   attenuation => attenuation_ice
 !  https://github.com/biogeochemistry/MyLake_public/blob/master/v12/v12_1/VAN_para_v12_1b.xls
 !  Phys_par(13) = lambda_i=5
-   attenuation = 0.7_rk
-   attenuation = 5.0_rk
+   attenuation_ice = 0.7_rk
+   attenuation_ice = 5.0_rk
    transmissivity = exp(-Hice*attenuation_ice)
 
    !LEVEL2 'done.'
@@ -189,11 +189,11 @@
          Tw = -Hice*rho_ice*L_ice/(dz*Cw) + Tf
          ice_cover = 0       ! no ice
          Hice = 0._rk
-         attenuation = 0._rk
+         attenuation_ice = 0._rk
          transmissivity = 1._rk
       else
-         albedo = 0.3
-         transmissivity = exp(-Hice*attenuation)
+         albedo_ice = 0.3
+         transmissivity = exp(-Hice*attenuation_ice)
       endif
    end if
 
