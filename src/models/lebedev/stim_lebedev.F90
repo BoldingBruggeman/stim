@@ -10,6 +10,7 @@
 !  https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016JC012199
 !
 ! !USES:
+   use stim_variables, only: transmissivity, albedo_ice
    use stim_variables, only: rk, Hice, dHis, dHib, Tf, fdd
    use stim_variables, only: rho_ice, L_ice, sensible_ice_water
    IMPLICIT NONE
@@ -22,7 +23,17 @@
 ! !PUBLIC DATA MEMBERS:
 !
 ! !PRIVATE DATA MEMBERS:
+!  Constants from Adolf Stips
    real(rk)           :: lebedev_fac=1.33_rk
+   real(rk)           :: damp_leb_swr = -1.6_rk
+   real(rk)           :: damp_leb_wind = -1.6_rk
+   real(rk)           :: damp_leb_shf = -1.6_rk
+   real(rk)           :: freeze_fac = -0.0575_rk
+   real(rk)           :: lebedev_albedo = 0.545
+!  REALTYPE :: sens_ice_water = 46.9d0 ! sensible heta transfer
+! basal heat flux fixed at 20 W/m^2 according to Holland 1998
+!   REALTYPE :: sens_ice_water = 20.d0 ! sensible heta transfer
+!   REALTYPE :: dt_ice=3600.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -99,12 +110,11 @@
 !
 ! !LOCAL VARIABLES:
    real(rk) :: x
-   real(rk), save :: egon=0._rk
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    ! calculate ice thickness according to Lebedev 1938 
-   Tf = -0.0575_rk*S
+   Tf = freeze_fac*S
    if (ice_cover .eq. 2) then
       ! calculate the cumulative freezing days
       fdd = fdd+(Tf-Ta)*dt/86400._rk
@@ -122,23 +132,23 @@
 #if 0
       if (dHis .lt. 0._rk) then
          dHib = (-dt*sensible_ice_water)/(rho_ice*L_ice)
-         egon = egon+dHib
       else
          dHib = 0._rk
-         egon = 0._rk
       end if
-      Hice = Hice+egon
 #endif
       Tw = Tf
       ice_cover = 2
+      albedo_ice = lebedev_albedo
+      transmissivity = exp(Hice/damp_leb_swr)
+!      transmissivity = exp(Hice*damp_leb_swr)
       if (Hice .lt. 0._rk) then
-         egon = 0._rk
+         albedo_ice = 0._rk
+         transmissivity = 1._rk
          Hice = 0._rk
          ice_cover = 0
       end if
    else
       fdd = 0._rk
-      egon = 0._rk
       Hice = 0._rk
       dHis = 0._rk
       ice_cover = 0

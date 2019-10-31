@@ -25,7 +25,8 @@
 ! !PUBLIC DATA MEMBERS:
 !
 ! !PRIVATE DATA MEMBERS:
-   real(rk), pointer :: Tice, albedo, attenuation
+   real(rk), pointer :: Tice
+!   real(rk), pointer :: albedo, attenuation
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -78,7 +79,11 @@
    Tice => Tice_surface
    albedo => albedo_ice
    attenuation => attenuation_ice
+!  https://github.com/biogeochemistry/MyLake_public/blob/master/v12/v12_1/VAN_para_v12_1b.xls
+!  Phys_par(13) = lambda_i=5
    attenuation = 0.7_rk
+   attenuation = 5.0_rk
+   transmissivity = exp(-Hice*attenuation_ice)
 
    !LEVEL2 'done.'
 
@@ -168,7 +173,7 @@
          Hice = sqrt(Hice**2+2._rk*K_ice/(rho_ice*L_ice)*dt*(Tf-Tice)) !Stefan's law
          dHis = Hice - dHis
       else
-         Tice = Tf         ! top ice melting due to solar radiation and heat fluxes
+         Tice = Tf        ! top ice melting due to solar radiation and heat fluxes
          Tice = 0._rk     ! top ice melting due to solar radiation and heat fluxes
          call Qfluxes(Tice,qh,qe,qb)
          Qflux = qh+qe+qb
