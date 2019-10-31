@@ -14,6 +14,7 @@
    use stim_variables, only: Cw,K_ice,L_ice,rho_ice
    use stim_variables, only: Tf,Tice_surface
    use stim_variables, only: Hice,Hfrazil,dHis,dHib
+   use stim_variables, only: transmissivity
    IMPLICIT NONE
 !  Default all is private.
    private
@@ -77,6 +78,7 @@
    Tice => Tice_surface
    albedo => albedo_ice
    attenuation => attenuation_ice
+   attenuation = 0.7_rk
 
    !LEVEL2 'done.'
 
@@ -179,12 +181,14 @@
       Hice = Hice + dHib
 
       if (Hice .le. 0.) then  ! excess of melting energy returned to water temp
-          Tw = -Hice*rho_ice*L_ice/(dz*Cw) + Tf
-          ice_cover = 0       ! no ice
-          Hice = 0._rk
-          attenuation = 0._rk
+         Tw = -Hice*rho_ice*L_ice/(dz*Cw) + Tf
+         ice_cover = 0       ! no ice
+         Hice = 0._rk
+         attenuation = 0._rk
+         transmissivity = 1._rk
       else
          albedo = 0.3
+         transmissivity = exp(-Hice*attenuation)
       endif
    end if
 
