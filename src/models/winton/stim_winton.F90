@@ -64,7 +64,8 @@
    real(rk), pointer :: hi,hs,dh1,dh2
    real(rk), pointer :: trn
    real(rk)          :: pen
-   real(rk)        ::  tmelt=0._rk,bmelt=0._rk
+   real(rk), pointer :: tmelt,bmelt
+   real(rk), pointer :: fb    ! heat flux from ocean to ice bottom (W/m^2)
 !
 ! !REVISION HISTORY:
 !  Original author: Michael Winton
@@ -115,6 +116,9 @@
    hi => Hice
    dh1 => dHis
    dh2 => dHib
+   tmelt => surface_ice_energy
+   bmelt => bottom_ice_energy
+   fb => ocean_ice_flux
 
    return
 !EOC
@@ -169,7 +173,6 @@ end subroutine init_stim_winton
 ! !OUTPUT PARAMETERS:
 !
 ! !LOCAL VARIABLES:
-   real(rk)        :: fb    ! heat flux from ocean to ice bottom (W/m^2)
    real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: snow
@@ -187,41 +190,44 @@ end subroutine init_stim_winton
 !-----------------------------------------------------------------------
 !BOC
    !LEVEL0 'do_stim_winton'
-   fb = 10._rk;
-   I = Qsw
+   tmelt = 0._rk
+   bmelt = 0._rk
 
-tmelt = 0.
-bmelt = 0.
-
-!  Calculate seawater freezing temperature
+   ! Calculate seawater freezing temperature
    Tf = -0.0575_rk*S
-   h1 = hi/2._rk
-   h2 = h1
 
-   call ice_optics(albedo_ice, pen, trn, hs, hi, ts, Tf)
+   if (ice_cover .gt. 0) then
+      call ice_optics(albedo_ice, pen, trn, hs, hi, ts, Tf)
+      I = Qsw*(1._rk-trn)
+      h1 = hi/2._rk
+      h2 = h1
 
-! check this out
-   call Qfluxes(Ts,qe,qh,qb)
-   A = -(qe+qh+qb) ! (7-)
-   call Qfluxes(Ts+dts,qe,qh,qb)
-   B = -(qe+qh+qb)
-   B = (B-A)/dts ! (8)
-   A = A+I - Ts*B ! (-7)
+      ! check this out
+      call Qfluxes(Ts,qe,qh,qb)
+      A = -(qe+qh+qb) ! (7-)
+      call Qfluxes(Ts+dts,qe,qh,qb)
+      B = -(qe+qh+qb)
+      B = (B-A)/dts ! (8)
+      A = A-I - Ts*B ! (-7)
 
-!https://github.com/mom-ocean/MOM5/blob/08266af73b04d2334be4a52d0c45c174f447cee4/src/ice_sis/ice_model.F90
-!                                      hf hfd 
-   call ice3lay_temp(hs,hi,t1,t2,ts_new,A,B,I,Tf,fb,dt,tmelt,bmelt)
-   ts = ts_new
-write(*,*) 'MELT ',tmelt,bmelt,hs
+      !https://github.com/mom-ocean/MOM5/blob/08266af73b04d2334be4a52d0c45c174f447cee4/src/ice_sis/ice_model.F90
+      call ice3lay_temp(hs,hi,t1,t2,ts_new,A,B,pen*I,Tf,fb,dt,tmelt,bmelt)
+      ts = ts_new
+ !     frazil = 0._rk
+      Hfrazil = 0._rk
+   else
+      frazil = -(Tw-Tf)*dz*Cw
+      if (frazil .gt. 0._rk) Hfrazil = frazil/(rho_ice*L_ice)
+   end if
 
-#if 1
-   call ice3lay_resize(hs, hi, t1, t2, snow, frazil, evap, tmelt, bmelt, &
-                       tf, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
-                       snow_to_ice)
-!                       snow_to_ice, bablt)
-!   call e_to_melt(hs, h1, t1, h2, t2)
-write(*,*) 'CC ',heat_to_ocn, h2o_to_ocn, h2o_from_ocn
-#endif
+   if (ice_cover .gt. 0 .or. frazil .gt. 0._rk) then
+      call ice3lay_resize(hs, hi, t1, t2, snow, frazil, evap, tmelt, bmelt, &
+                          tf, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
+                          snow_to_ice)
+   !                       snow_to_ice, bablt)
+!write(*,*) 'CC ',heat_to_ocn, h2o_to_ocn, h2o_from_ocn
+   end if
+
 hs = 0._rk
    if (hi .gt. 0._rk) then
       ice_cover = 2

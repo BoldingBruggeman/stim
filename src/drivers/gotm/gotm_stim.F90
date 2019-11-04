@@ -86,8 +86,8 @@
                      option(2, 'MyLake'), &
                      option(3, 'Winton')/))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
-   call branch%get(sensible_ice_water, 'sensible_ice_water', &
-                   'sensible heat flux ice/water','W/m^2',default=0._rk, display=display_hidden)
+   call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
+                   'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
    LEVEL2 'done.'
 allocate(Tice(2))
    return

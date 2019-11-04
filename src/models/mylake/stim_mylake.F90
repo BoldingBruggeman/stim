@@ -15,6 +15,8 @@
    use stim_variables, only: Tf,Tice_surface
    use stim_variables, only: Hice,Hfrazil,dHis,dHib
    use stim_variables, only: transmissivity
+   use stim_variables, only: surface_ice_energy, bottom_ice_energy
+   use stim_variables, only: ocean_ice_flux
    IMPLICIT NONE
 !  Default all is private.
    private
@@ -26,6 +28,7 @@
 !
 ! !PRIVATE DATA MEMBERS:
    real(rk), pointer :: Tice
+   real(rk), pointer :: ice_energy
 !   real(rk), pointer :: albedo, attenuation
 !
 ! !REVISION HISTORY:
@@ -77,6 +80,7 @@
 #endif
 
    Tice => Tice_surface
+   ice_energy => bottom_ice_energy
 !KB   albedo => albedo_ice
 !KB   attenuation => attenuation_ice
 !  https://github.com/biogeochemistry/MyLake_public/blob/master/v12/v12_1/VAN_para_v12_1b.xls
@@ -134,7 +138,6 @@
 ! !LOCAL VARIABLES:
    real(rk)                  :: max_frazil=0.03_rk
    real(rk)                  :: alpha
-   real(rk)                  :: ice_energy
    real(rk)                  :: qh,qe,qb,Qflux
 !EOP
 !-----------------------------------------------------------------------
@@ -142,7 +145,7 @@
 
    Tf = -0.0575*S
 
-   ice_energy = (Tw-Tf)*dz*Cw
+   ice_energy = (Tw-Tf)*dz*Cw + ocean_ice_flux*dt
 !   dHib = (-ice_energy+sensible_ice_water)/(rho_ice*L_ice)
    dHis = 0._rk
    dHib = (-ice_energy)/(rho_ice*L_ice)

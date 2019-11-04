@@ -12,7 +12,7 @@
 ! !USES:
    use stim_variables, only: transmissivity, albedo_ice
    use stim_variables, only: rk, Hice, dHis, dHib, Tf, fdd
-   use stim_variables, only: rho_ice, L_ice, sensible_ice_water
+   use stim_variables, only: rho_ice, L_ice, ocean_ice_flux
    IMPLICIT NONE
 !  Default all is private.
    private
