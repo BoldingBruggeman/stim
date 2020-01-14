@@ -214,7 +214,16 @@ allocate(Tice(2))
 #endif
 #ifdef STIM_WINTON
       case(3)
-         call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         if (S .lt. 0.01) then
+            LEVEL0 'The Winton ice model is developed for oceanic conditions.'
+            LEVEL0 'Very low salinity is not supported - and the principle'
+            LEVEL0 'advantage of the model (brine contribution to latent'
+            LEVEL0 'heat calculation) is not met.'
+            LEVEL0 'Please select another ice model.'
+            stop 'do_stim()'
+         else
+            call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         end if
 #endif
       case default
          stop 'invalid ice model'
