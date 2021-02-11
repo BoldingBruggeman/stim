@@ -22,7 +22,8 @@
    real(rk), public :: rho_ice = 910._rk  ! kg m-3
 
    real(rk), public :: init_ice_energy = 0._rk    ! 
-   real(rk), public :: melt_ice_energy = 0._rk    ! 
+   real(rk), target, public :: surface_ice_energy = 0._rk    ! 
+   real(rk), target, public :: bottom_ice_energy = 0._rk    ! 
 
    real(rk), target, public :: Tf = 0._rk ! freezing temperature
    real(rk), target, public :: Tice_surface = 0._rk
@@ -34,7 +35,8 @@
    real(rk), target, public :: dHib = 0._rk    ! bottom ice growth
    real(rk), target, public :: albedo_ice = 0._rk
    real(rk), target, public :: attenuation_ice = 0._rk
-   real(rk), target, public :: sensible_ice_water = 0._rk
+   real(rk), target, public :: ocean_ice_flux = 0._rk
+   real(rk), target, public :: transmissivity = 1._rk
 
    ! Lebedev
    real(rk), target, public :: fdd

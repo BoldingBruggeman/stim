@@ -264,17 +264,11 @@ real(rk) :: KI_over_eps = 1.7065e-2     ! 5/2.93 from Bryan (1969);
   A1 = A10+K12*B*hie/(K12+B*hie)
   B1 = B10+A*K12*hie/(K12+B*hie)
   C1  = DI*hi2*LI*TFI/(2*dt)
-write(*,*) t1
   t1 = -(sqrt(B1*B1-4*A1*C1)+B1)/(2*A1)
-write(*,*) 'KI ',KI,KS,hs
-write(*,*) A10,K12,B
-write(*,*) DI,hi2,CI
-write(*,*) LI,TFI,t1
-write(*,*) B10
-write(*,*) B1,A1,C1
   ts = (K12*t1-A*hie)/(K12+B*hie)
    
-  if (ts > tsf) then       ! slightly different equation for melting conditions
+!  if (ts > tsf) then       ! slightly different equation for melting conditions
+  if (ts > -0.054) then       ! slightly different equation for melting conditions
     A1 = A10+K12
     B1 = B10-K12*tsf
     t1 = -(sqrt(B1*B1-4*A1*C1)+B1)/(2*A1)
@@ -287,7 +281,6 @@ write(*,*) B1,A1,C1
   t1 = t1-tfw; t2 = t2-tfw;
   t2 = (2*dt*2*KI*t1+DI*hi2*CI*t2)/(6*dt*2*KI+DI*hi2*CI)
   t1 = t1+tfw; t2 = t2+tfw;
-write(*,*) 't1 ',t1,t2,ts
 
   bmelt = bmelt + (fb+4*KI*(t2-tfw)/hie)*dt
 
@@ -308,7 +301,8 @@ write(*,*) 't1 ',t1,t2,ts
 !    print *,'A/B/C=',A1,B1,C1,A1*t1*t1+B1*t1+C1,A1*t1*t1,B1*t1,C1
 !    stop
 ! end if
-! call thm_checkout(ts, hs, hi, t1, t2, bmelt, tmelt)
+!KB
+ call thm_checkout(ts, hs, hi, t1, t2, bmelt, tmelt)
 
   return
 end subroutine ice3lay_temp
@@ -413,6 +407,7 @@ real(rk), intent(  out) :: snow_to_ice ! snow below waterline becomes ice
 real(rk), intent(  out), optional :: bablt ! bottom ablation (kg/m^2)
 
 real(rk) h1, h2, dh, hw
+real(rk) h1o, h2o
 
   heat_to_ocn  = 0.0
   h2o_to_ocn   = DS*hs+DI*hi+snow-evap ! - from ice at end gives ocean h2o flux
@@ -464,6 +459,7 @@ real(rk) h1, h2, dh, hw
   !
   ! atmospheric evaporation
   !
+#if 0
   if (evap <= hs*DS) then
     hs = hs - evap/DS
   else if (evap-hs*DS<=h1*DI) then
@@ -479,16 +475,21 @@ real(rk) h1, h2, dh, hw
     h1 = 0.0
     h2 = 0.0
   end if
+#endif
 
-  if (bmelt < 0.0) call add_to_bot(-bmelt/e_to_melt(h2=1._rk,t2=tfw), tfw, h2, t2)
+  if (bmelt < 0.0) then
+    h2o = h2
+    call add_to_bot(-bmelt/e_to_melt(h2=1._rk,t2=tfw), tfw, h2, t2)
+  end if
 
   if (h1 == 0.0) t1 = tfw  ! need this, below we divide by t1 even when h1 == 0
 
   !
   ! apply energy fluxes ... top ...
   !
+  h1o = h1
   if (tmelt <= e_to_melt(hs)) then
-    hs = hs - tmelt/e_to_melt(hs=1._rk)
+!KB    hs = hs - tmelt/e_to_melt(hs=1._rk)
   else if (tmelt <= e_to_melt(hs,h1,t1)) then
     h1 = h1 - (tmelt-e_to_melt(hs))/e_to_melt(h1=1._rk,t1=t1)
     hs = 0.0
@@ -507,13 +508,14 @@ real(rk) h1, h2, dh, hw
   !
   if (present(bablt)) bablt = DS*hs+DI*(h1+h2)
   if (bmelt > 0.0) then
+    h2o = h2
     if (bmelt < e_to_melt(h2=h2,t2=t2)) then
       h2 = h2 - bmelt/e_to_melt(h2=1._rk,t2=t2)
     else if (bmelt < e_to_melt(h1=h1,t1=t1,h2=h2,t2=t2)) then
       h1 = h1-(bmelt-e_to_melt(h2=h2,t2=t2))/e_to_melt(h1=1._rk,t1=t1)
       h2 = 0.0
     else if (bmelt < e_to_melt(hs,h1,t1,h2,t2)) then
-      hs = hs - (bmelt-e_to_melt(h1=h1,t1=t1,h2=h2,t2=t2))/e_to_melt(hs=1._rk)
+!KB      hs = hs - (bmelt-e_to_melt(h1=h1,t1=t1,h2=h2,t2=t2))/e_to_melt(hs=1._rk)
       h1 = 0.0
       h2 = 0.0
     else
@@ -524,12 +526,11 @@ real(rk) h1, h2, dh, hw
     endif
   endif
   if (present(bablt)) bablt = bablt-DS*hs-DI*(h1+h2)
-
   hi = h1 + h2
   hw = (DI*hi+DS*hs)/DW
   if (hw>hi) then           ! convert snow to ice to maintain ice at waterline
     snow_to_ice = (hw-hi)*DI
-    hs = hs - snow_to_ice/DS
+!KB    hs = hs - snow_to_ice/DS
     call add_to_top(hw-hi, TFI, h1, t1)
   endif
 

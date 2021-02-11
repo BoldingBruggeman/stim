@@ -86,9 +86,10 @@
                      option(2, 'MyLake', 'MyLake'), &
                      option(3, 'Winton', 'Winton')/))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
-   call branch%get(sensible_ice_water, 'sensible_ice_water', &
-                   'sensible heat flux ice/water','W/m^2',default=0._rk, display=display_hidden)
+   call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
+                   'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
    LEVEL2 'done.'
+allocate(Tice(2))
    return
    end subroutine init_stim_yaml
 !EOC
@@ -135,12 +136,12 @@
 #endif
 #ifdef STIM_WINTON
       case(3)
-#if 0
-         allocate(Tice(2))
+#if 1
+!KB         allocate(Tice(2))
          call init_stim_winton(Ta)
 #else
          LEVEL0 "Winton model is compiled - but execution is disabled"
-         LEVEL0 "change line 173 in gotm_stim.F90 - then recompile - "
+         LEVEL0 "change line 138 in gotm_stim.F90 - then recompile - "
          LEVEL0 "then do some work to make the Winton ice model work ...."
          LEVEL0 ".... in STIM"
          stop 'post_init_stim(): init_stim_winton()'
@@ -213,7 +214,16 @@
 #endif
 #ifdef STIM_WINTON
       case(3)
-         call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         if (S .lt. 0.01) then
+            LEVEL0 'The Winton ice model is developed for oceanic conditions.'
+            LEVEL0 'Very low salinity is not supported - and the principle'
+            LEVEL0 'advantage of the model (brine contribution to latent'
+            LEVEL0 'heat calculation) is not met.'
+            LEVEL0 'Please select another ice model.'
+            stop 'do_stim()'
+         else
+            call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+         end if
 #endif
       case default
          stop 'invalid ice model'
