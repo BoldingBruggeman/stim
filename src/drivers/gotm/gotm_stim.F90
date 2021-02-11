@@ -81,10 +81,10 @@
    branch => settings_store%get_typed_child('surface/ice')
    call branch%get(ice_model, 'model', 'model', default=0, &
                    options=&
-                   (/option(0, 'none'), &
-                     option(1, 'Lebedev (1938)'), &
-                     option(2, 'MyLake'), &
-                     option(3, 'Winton')/))
+                   (/option(0, 'none', 'none'), &
+                     option(1, 'Lebedev (1938)', 'Lebedev'), &
+                     option(2, 'MyLake', 'MyLake'), &
+                     option(3, 'Winton', 'Winton')/))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
    call branch%get(sensible_ice_water, 'sensible_ice_water', &
                    'sensible heat flux ice/water','W/m^2',default=0._rk, display=display_hidden)
