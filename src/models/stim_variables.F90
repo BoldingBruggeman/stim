@@ -106,7 +106,8 @@
 !  !initializing yaml variables to reasonable defaults 
 !   nilay              - number of snow & ice layers
    integer, public :: nilay = 0             
-!   sfall_method       - 1:constant snow fall
+!   sfall_method       - define how snow fall is determined 
+!                        1:constant snow fall
 !                        2:calculate snowfall from precipitation 
    integer, public :: sfall_method = 0       
 !   const_sfall        - constant snow fall rate (m d^-1)
@@ -117,7 +118,8 @@
 !   depmix             - prescribed mixed layer depth for open_water
 !                         calculation. If set to zero top layer thickness is used.   
    real(rk), public :: depmix = 0._rk
-!   sice_method        - 1: constant ice salinity
+!   sice_method        - define how sea-ice salinity is to be calculated
+!                        1: constant ice salinity
 !                        2: Simple ice salinity profile (Vancoppenolle et al. 2009?)
    integer, public :: sice_method = 0
 !   snow_dist          - logical switch between uniform and Weibull-distributed snow

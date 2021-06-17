@@ -213,33 +213,74 @@
    bmelt => bottom_ice_energy
    fb => ocean_ice_flux
 
-
-   print *, hlaymin
-   print *, rhoice
-   print *, Tfreezi
-   print *, rCpmix
-   print *, Hfi
-   print *, hsmin
-   print *, theta
-   print *, sigma
-   print *, epsilon
-   print *, PenFrac
-   print *, hlaymin
-   print *, rhoscold
-   print *, rhoswarm
-   print *, rhowaterfresh
-   print *, rhoice
-   print *, kelvin
-   print *, Tmelts
-   print *, Tmelti
-   print *, Condfi
-   print *, rhoCpfi 
-   print *, rCpmix
-   print *, Hfi
-   print *, Hfw
-   print *, swkappa
-   print *, Tfreezi
-   print *, nlmax
+   print *, '----------------------------------------------'
+   print *, 'public data members from ice_uvic'
+   print *, '----------------------------------------------'
+   print *, 'hlaymin', hlaymin
+   print *, 'rhoice',rhoice
+   print *, 'Tfreezi',Tfreezi
+   print *, 'rCpmix',rCpmix
+   print *, 'Hfi',Hfi
+   print *, 'hsmin',hsmin
+   print *, 'theta',theta
+   print *, 'sigma',sigma
+   print *, 'epsilon',epsilon
+   print *, 'PenFrac',PenFrac
+   print *, 'hlaymin',hlaymin
+   print *, 'rhoscold',rhoscold
+   print *, 'rhoswarm',rhoswarm
+   print *, 'rhowaterfresh',rhowaterfresh
+   print *, 'rhoice',rhoice
+   print *, 'kelvin',kelvin
+   print *, 'Tmelts',Tmelts
+   print *, 'Tmelti',Tmelti
+   print *, 'Condfi',Condfi
+   print *, 'rhoCpfi',rhoCpfi 
+   print *, 'rCpmix',rCpmix
+   print *, 'Hfi',Hfi
+   print *, 'Hfw',Hfw
+   print *, 'swkappa',swkappa
+   print *, 'freezi',Tfreezi
+   print *, 'nlmax',nlmax
+   print *, '----------------------------------------------'
+   print *, 'local Variables'
+   print *, '----------------------------------------------'
+   print *, 'rhosnow',rhosnow 
+   print *, 'Iceflux', Iceflux
+   print *, 'bctype', bctype
+   print *, 'bcs', bcs
+   print *, 'dti', dti
+   print *, 'qb', qb
+   print *, 'qh', qh
+   print *, 'qe', qe
+   print *, 'tx', tx
+   print *, 'ty', ty
+   print *, 'PenSW', PenSW
+   print *, 'fluxt', fluxt
+   print *, 'simass', simass
+   print *, 'snmass',  snmass
+   print *, 'simasso', simasso
+   print *, 'snmasso', snmasso
+   print *, 'Ts',  Ts
+   print *, 'Tsav', Tsav
+   print *, 'ice_salt', ice_salt
+   print *, 'sfall', sfall
+   print *, 'dfact', dfact
+   print *, 'depmix', depmix
+   print *, 'airtk', airtk
+   print *, 'C', C
+   print *, 'R', R
+   print *, 'dto', dto
+   print *, 'nslay', nslay
+   print *, 'Asnow', Asnow
+   print *, 'Aice', Aice
+   print *, 'hsmax',  hsmax
+   print *, 'meltmass', meltmass
+   print *, 'meltmasso', meltmasso
+   print *, 'pi', pi
+   print *, '----------------------------------------------'
+   print *, 'Yaml Variables'
+   print *, '----------------------------------------------'
    print *, 'print nilay from yaml', nilay
    print *, 'print sfall_method from yaml', sfall_method
    print *, 'print const_sfall from yaml', const_sfall
