@@ -49,7 +49,7 @@
 !
 ! !USES:
    use stim_variables
-   use ice_thm_mod
+   use ice_thm_mod_flato
    IMPLICIT NONE
 !
 !  default: all is private.
