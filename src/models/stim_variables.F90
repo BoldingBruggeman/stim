@@ -109,35 +109,35 @@
 !   sfall_method       - define how snow fall is determined 
 !                        1:constant snow fall
 !                        2:calculate snowfall from precipitation 
-   integer, public :: sfall_method = 0       
+   integer, public :: sfall_method = 1       
 !   const_sfall        - constant snow fall rate (m d^-1)
-   real(rk), public :: const_sfall = 0._rk 
+   real(rk), public :: const_sfall = 0.0017D+00
 !   dfact              - drift factor allowing a factor to increase snow fall from 
 !                        precipitation via drifing snow (only for sfall_method=2) 
-   real(rk), public :: dfact = 0._rk
+   real(rk), public :: dfact = 1.0D+00
 !   depmix             - prescribed mixed layer depth for open_water
 !                         calculation. If set to zero top layer thickness is used.   
-   real(rk), public :: depmix = 0._rk
+   real(rk), public :: depmix = 10.0D+00
 !   sice_method        - define how sea-ice salinity is to be calculated
 !                        1: constant ice salinity
 !                        2: Simple ice salinity profile (Vancoppenolle et al. 2009?)
-   integer, public :: sice_method = 0
+   integer, public :: sice_method = 1
 !   snow_dist          - logical switch between uniform and Weibull-distributed snow
 !                        if true a snow distribution function will be applied
 !                        if false a uniform snow thickness will be applied  
    logical, public :: snow_dist = .false.
 !   const_Sice         - prescribed sea ice salinity (ppt)
-   real(rk), public :: const_Sice = 0._rk
+   real(rk), public :: const_Sice = 6.0D+00
 !   distr_type         - integer to chose the type of distribution 
    integer, public :: distr_type = -1
 !   meltpond           - logical to switch on meltpond
    logical, public :: meltpond = .false.
 !   Ameltmax           - maximum meltpond area
-   real(rk), public :: Ameltmax = 0._rk
+   real(rk), public :: Ameltmax = 0.25D+00
 !   drainrate          - fixed meltpond drainrate - (m/d) converted to (kg/m^2/s)
-   real(rk), public :: drainrate = 0._rk
+   real(rk), public :: drainrate = 0.0175D+00
 !   hh0                -  initial thickness for S calculation        
-   real(rk), public :: hh0 = 0._rk
+   real(rk), public :: hh0 = 0.15D+00
 !  ice_hi_i            - initial ice thickness (m) 
    real(rk), public :: ice_hi_i = 0.2D+00
 !  ice_hs_i            - initial snow thickness (m) 
@@ -148,35 +148,35 @@
 !                          albsnow is set to albsnow_f (constant)
 !                        3:albice and albsnow based on eq12&13 of Flato&Brown1996
 !                        4:albice and albsnow dependent on temperature (same as transs/transi formulation)
-   integer, public :: albice_method = 0
+   integer, public :: albice_method = 1
 !  albice_f            - freezing ice albedo 
-   real(rk), public :: albice_f = 0._rk
+   real(rk), public :: albice_f = 0.55D+00
 !  albmelt             - melt pond albedo   
-   real(rk), public :: albmelt = 0._rk
+   real(rk), public :: albmelt = 0.2D+00
 !  albsnow_f           - freezing snow albedo
-   real(rk), public :: albsnow_f = 0._rk
+   real(rk), public :: albsnow_f = 0.75D+00
 !  albice_m            - melting ice albedo
-   real(rk), public :: albice_m = 0._rk
+   real(rk), public :: albice_m = 0.75D+00
 !  albsnow_m           - melting snow albedo
-   real(rk), public :: albsnow_m = 0._rk
+   real(rk), public :: albsnow_m = 0.55D+00
 !  transsf             - freezing snow transmission coefficient
-   real(rk), public :: transsf = 0._rk
+   real(rk), public :: transsf = 0.05D+00
 !  transsm             - melting snow transmission coefficient
-   real(rk), public :: transsm = 0._rk
+   real(rk), public :: transsm = 0.08D+00
 !  transif             - freezing ice transmission coefficient
-   real(rk), public :: transif = 0._rk
+   real(rk), public :: transif = 0.5D+00
 !  transim             - melting ice transmission coefficient
-   real(rk), public :: transim = 0._rk
+   real(rk), public :: transim = 0.5D+00
 !  transm              - melt pond transmision coefficient
-   real(rk), public :: transm = 0._rk
+   real(rk), public :: transm = 0.8D+00
 !  swkappasm           - melting snow extinction coefficient
-   real(rk), public :: swkappasm = 0._rk
+   real(rk), public :: swkappasm = 7.5D+00
 !  swkappasf           - freezing snow extinction coefficient
-   real(rk), public :: swkappasf = 0._rk
+   real(rk), public :: swkappasf = 14.0D+00
 !  swkappaim           - melting ice extinction coefficient
-   real(rk), public :: swkappaim = 0._rk
+   real(rk), public :: swkappaim = 0.8D+00
 !  swkappaif           - freezing ice extinction coefficient
-   real(rk), public :: swkappaif = 0._rk
+   real(rk), public :: swkappaif = 1.2D+00
 
 !
 ! !REVISION HISTORY:
