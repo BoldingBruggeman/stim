@@ -34,6 +34,11 @@ write(*,*) 'Ice models included:'
 #else
    write(*,*) 'Winton:  off'
 #endif
+#ifdef STIM_FLATO
+   write(*,*) 'Flato:  on'
+#else
+   write(*,*) 'Flato:  off'
+#endif
 
    end program test_stim
 !EOC

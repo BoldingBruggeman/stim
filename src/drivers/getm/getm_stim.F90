@@ -192,6 +192,9 @@ return
       case(3)
          allocate(Tice(2))
          call init_stim_winton(Ta)
+      case(4)
+         allocate(Tice(2))
+         call init_stim_flato(Ta)
 #endif
       case default
          stop 'invalid ice model'
@@ -291,6 +294,8 @@ return
          call do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
       case(3)
          call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+      case(4)
+         call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif
       case default
          stop 'invalid ice model'
