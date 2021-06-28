@@ -534,6 +534,8 @@ subroutine init_stim_flato(Ta)
    print *, 'ice_uvic_dzice',ice_uvic_dzice
    print *, 'ice_uvic_zice',ice_uvic_zice
    print *, ''
+ 
+
    
 #endif 
 
@@ -715,47 +717,6 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
    real(rk), intent(inout)   :: alb   ! surface albedo - water, ice/snow-total
    real(rk), intent(inout)   :: heat  ! surface heat flux
 
-   
-   !INOUT PARAMETERS
-   !from ice.F90 in old code.. 
-   !real(rk), intent(inout)   :: ice_hi    ! ice thickness (m)  --> hi --> hice
-   !real(rk), intent(inout)   :: ice_hs    ! snow thickness (m) --> hs -->hsnow 
-
- !  real(rk), intent(inout)   :: ice_hm    ! meltpond thickness (m)
-  ! real(rk), intent(inout)   :: Tice(nilay+1)  ! ice layer temperature Tice(nilay +1)(deg-C)
-  ! real(rk), intent(inout)   :: Cond(nilay)  ! thermal conductivities defined at the 
-                               ! centre of each layer Cond(nilay)(W m-1 K-1)
-  ! real(rk), intent(inout)   :: rhoCp(nilay) ! volumetric heat capacities defined at 
-                               ! the centre of each layer rhoCp(nilay)(J m-3 K-1)
-  ! real(rk), intent(inout)   :: Sint(nilay+1) ! internal heat source due to penetrating 
-                                ! short wave radiation Sint(nilay)(W m-3)
-  ! real(rk), intent(inout)   :: dzi(nilay) !layer thicknesses dzi(nilay)(m)
-  ! real(rk), intent(inout)   :: zi(nlmax) !layer interface depths zi(nilay+1)(m)
-  ! real(rk), intent(inout)   :: Told(nilay+1) !ice temperature two time steps 
-                                ! previous to calculation of outgoing 
-                                ! long-wave flux in SEBUDGET Told (nilay+1) (K)
-   !NSnote, check - maybe adjust units...
-  ! REALTYPE, intent(inout)  ::  Sice_bulk   ! bulk ice salinity (ppt)
-  ! REALTYPE, intent(inout)  ::  Fh   ! interface heat flux (W/m2)
-  ! REALTYPE, intent(out)  ::  Ff   ! interface freshwater flux (m s-1)
-  ! REALTYPE, intent(out)  ::  Fs   ! interface salt flux - (ppt m s-1)
-  !REALTYPE, intent(out)   :: Pari(nilay+1) 
-                       !photosynthatically available radiation in ice (W m-2)
-
-! !OUTPUT PARAMETERS:
-  !REALTYPE, intent(out)     :: TopMelt ! top melting - ice mass melted at the surface (snow+ice)  at time step(m) --> is this the same as tmelt from winton old --> no I dont think so in winton it is called ice_tmelt and in uvic it's called ice_uvic_topmelt 
-  !REALTYPE, intent(out)     :: Botmelt ! bottom melting - ice mass melted at the ice bottom at time step(m) --> is this the same as bmelt from winton old --> 
-  !REALTYPE, intent(out)     :: TerMelt ! internal melting - ice mass melted in the ice interior at time step (m) 
-  !REALTYPE, intent(out)     :: TopGrowth ! top growth ice mass growth at slab surface due to snow submersion (m)
-  !REALTYPE, intent(out)     :: BotGrowth ! bottom growth - ice mass growth at the ice bottom at time step (m)     
-  !REALTYPE, intent(out)     :: Hmix !  transferred energy - check  (m)
-!   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
-! the SWR which crosses the ice slab and reach the water. keep it for now
-  !REALTYPE, intent(out)     :: Aice_i,Asnow_i,Amelt_i ! ice area fraction which is : open ice, snow and 
-                                                ! meltpond, respectively
-  !REALTYPE, intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
-
-   !LOCAL VARS:
 
    ! LOCAL VARIABLES 
    real(rk)        :: h1,h2  !point to hice and hsnow whose values are taken from stim_variables.F90 
@@ -800,8 +761,141 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 #endif 
 
 
+
+   call open_water(I_0,depmix,sst,heat,precip)
+
+
 end subroutine do_ice_uvic 
 ! EOC
+!-----------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------
+
+! !INTERFACE:
+subroutine open_water(I_0,hSS,sst,heat,precip)
+   
+   !nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
+   !nilay --> yaml
+   !Sice_bulk --> ice_uvic_sicebulk
+   !Hmix --> ice_uvic_Hmix
+   !Tice --> ice_uvic_Tice
+   !hss --> depmix (local var)
+   !tss --> sst
+   !fh- -> ice_uvic_fh
+   !precip_i --> ice_uvic_precip_i
+   !i_0,heat,precip --> outside ice 
+
+   ! changed the above variables in the code below 
+   ! changed all _ZERO_ to 0 
+
+                                    !.. can I change something so that tss points to sst ? 
+                                    ! initialize a variable TSS 
+                                    ! declare tss as pointer and sst as a target
+                                    ! tss => sst ! then do something like this 
+
+                                    ! or could declare the vars as local variables real(rk) :: tss and then 
+                                    ! do tss = sst
+
+                                    ! or just leave it as is with variables changed 
+
+! !USES:
+   IMPLICIT NONE
+! !INPUT PARAMETERS:
+   real(rk),intent(in) :: hSS !--> [[ depmix ]] just named something different when passed to subroutine 
+!INOUT PARAMETERS
+   real(rk), intent(inout)   :: I_0
+   real(rk), intent(inout)   :: heat
+   real(rk), intent(in)      :: precip !H!
+   real(rk), intent(inout)  :: sst     !SST     ! sea surface temperature
+
+! !LOCAL VARIABLES:
+! coefficients for 
+   real(rk)                  ::  Tmix,dmsi
+   real(rk)                  ::  Sni   ! Sni - salinity of new ice
+   integer                   ::  k,cont,i
+
+   !print *, 'open_water vars', hSS, I_0, heat, precip, Tmix, dmsi, Sni, k, cont, i
+
+
+   !LEVEL1'open_water'
+   !
+   !
+   !   Calculate the surface energy budget components
+   !   We use the thickness of the first layer instead
+   !   of 'depmix' in calculations
+   ! check, can we get mixed layer and Tmix from GOTM? 
+   ! watch consistency for removal of heat
+   ! NSnote why set to Tice(1), ok if there is ice, but what if not? 
+   ! Answer:should be Tmix if open water before - 
+   ! used so Tmix (or TSS) does not need to be transferred 
+   
+         Sni=6.0D00
+   
+   !      Tmix=Tfreezi+Hmix/(rCpmix*depmix)
+         Tmix=(SST+kelvin)+ice_uvic_Hmix/(rCpmix*hSS)
+   !  Set all 'ice' temperatures to be the mixed layer temperature
+   ! (only the surface value has any real meaning in this case, 
+   ! since there is actually no ice yet)
+   !  
+         do k=1,nilay+1
+            ice_uvic_Tice(k)=Tmix
+         enddo
+   
+   !   Check if mixed layer temperature is below freezing. If so,
+   !   create some ice which is assumed to be isothermal at the 
+   !   freezing temperature initially 
+   
+         if(Tmix .lt. Tfreezi) then
+            
+            dmsi=(Tfreezi-Tmix)*hSS*rCpmix/Hfi
+            simass=simass+dmsi
+            ice_uvic_Hmix=0.D+00
+            Tmix=Tfreezi 
+   !reset TSS here!!!  
+            SST=Tmix-kelvin
+   
+   !   New ice salinity
+            
+            if(ice_salt) then
+               Sni=4.606D+00+0.91603D+00/hh0
+            endif
+            ice_uvic_Sicebulk=Sni
+   
+   !   New ice temperature
+   
+            do k=1,nilay+1
+               ice_uvic_Tice(k)=Tfreezi
+            enddo
+   
+   ! need to set heat and I_0 to zero since this negtive heat has already 
+   ! been used for ice growth, otherwise it will be applied twice - second time in temperature.F90 in gotm  - NScheck I_0 for light!
+            heat=0.D00
+            I_0=0.D00 
+   
+   ! Note, what is with Fh??? even if only for accounting
+   !         Fh=
+          else
+            !just open water, no ice existing, no melt or growth
+            ice_uvic_Tice=Tfreezi
+            dmsi=0 
+            ice_uvic_Fh=0 
+            snmass=0
+            simass=0
+            Iceflux(2)=0
+            ice_uvic_Sicebulk=Sni
+            I_0=I_0
+            heat=heat
+            ice_uvic_Hmix=0
+         endif
+         ice_uvic_precip_i=precip !H!
+      
+      return
+
+end subroutine open_water
+
+
+
 !-----------------------------------------------------------------------
 
 
