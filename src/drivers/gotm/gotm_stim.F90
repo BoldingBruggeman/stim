@@ -91,9 +91,12 @@
    call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
                    'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
    !flato
+   call branch%get(runwintonflato, 'runwintonflato', 'run the winton model inside of flato', '', default=0)
+
    call branch%get(nilay, 'nilay', 'number of ice layers', '', default=0)
    !call branch%get(sfall_method, 'sfall_method', 'define how snow fall is determined ','', default=0, &
-                 ! options=(/option(1, 'constant snow fall', 'constant'), option(2, 'calculate snowfall from precipitation', &
+                 ! options=
+                 !(/option(1, 'constant snow fall', 'constant'), option(2, 'calculate snowfall from precipitation', &
                  ! 'precipitation')/))
    call branch%get(sfall_method, 'sfall_method', 'define how snow fall is determined ','', default=0)
    call branch%get(const_sfall,'const_sfall ', 'constant snow fall rate', 'm d^-1', default=0._rk)
@@ -226,7 +229,9 @@ allocate(Tice(2))
 ! !IROUTINE: do the ice calculations
 !
 ! !INTERFACE:
-   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,julianday,secondsofday, &
+                     longitude,latitude,I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0, &
+                     back_radiation_method,hum_method,fluxes_method,albedo,heat)
 !
 ! !DESCRIPTION:
 !
@@ -234,7 +239,11 @@ allocate(Tice(2))
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)    :: dz,dt,Ta,S,precip,Qsw
+  !REALTYPE, intent(in)    :: dz,dt,Ta,S,precip,Qsw
+   REALTYPE, intent(in)    :: dz,dt,Ta,S,Qsw,longitude,latitude,airt,airp,hum,cloud,sss,rho,rho_0
+   REALTYPE, intent(inout)    :: precip,I_0,u10,v10,sst,albedo,heat
+   integer, intent(in)     :: julianday,secondsofday,back_radiation_method,hum_method,fluxes_method
+   !jp
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE, intent(inout) :: Tw
@@ -297,8 +306,21 @@ allocate(Tice(2))
             LEVEL0 'Please select another ice model.'
             stop 'do_stim()'
          else
-            call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
-         end if
+            if (runwintonflato .eq. 1) then 
+               call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+            end if 
+         
+               call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
+                              I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
+                              hum_method,fluxes_method,albedo,heat)
+
+                             !-------- this exists after the call to do_ice_uvic in the old code ??? -jp
+                             ! ice_uvic_ts=ice_uvic_Tice(1)
+                             ! ice_uvic_tb=ice_uvic_Tice(nilay)
+                             ! ice_uvic_parb=ice_uvic_Pari(nilay)
+                             ! ice_uvic_parui=ice_uvic_Pari(nilay+1)
+         end if                    !---------
+   
 #endif
       case default
          stop 'invalid ice model'

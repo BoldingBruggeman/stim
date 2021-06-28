@@ -41,8 +41,11 @@
    ! Lebedev
    real(rk), target, public :: fdd
 
-   !Flato 
-! Flato PUBLIC DATA MEMBERS: 
+   ! Flato 
+!----------------------------------------------------------------------------------------------------------------------------------
+! Flato PUBLIC DATA MEMBERS from uvic_ice.F90
+!----------------------------------------------------------------------------------------------------------------------------------
+
 ! parameters
    public :: hlaymin,rhoice,Tfreezi,rCpmix,Hfi
 
@@ -102,6 +105,10 @@
    integer, public, parameter :: nlmax=99
 
 !-----------------------------------------------------------
+! YAML VARIABLES from old code nml 
+!-----------------------------------------------------------
+!TURNING WINTON INSIDE FLATO ON OFF
+   integer, public :: runwintonflato = 0        ! run the winton model inside of flato 0:off, 1:on
 
 !  !initializing yaml variables to reasonable defaults 
 !   nilay              - number of snow & ice layers
@@ -178,6 +185,70 @@
 !  swkappaif           - freezing ice extinction coefficient
    real(rk), public :: swkappaif = 1.2D+00
 
+
+!-------------------------------------------------------------------------------------------------------------
+! Flato PUBLIC DATA MEMBERS from ice.F90
+!-------------------------------------------------------------------------------------------------------------
+  ! integer, public                     :: ice_method !jpnote: --> read in from yml not needed 
+!  Simple 'ice model'
+   !real(rk), public                    :: ice_layer
+!  Winton/UVIC ice model
+ !  real(rk), public, target            :: ice_hs,ice_hi  --> jpnote: exists as hice and hsnow
+!  Winton ice model
+   real(rk), public                    :: ice_ts,ice_T1,ice_T2
+   real(rk), public                    :: ice_tmelt,ice_bmelt
+!  University of Victoria ice model
+! ts,tb are the upper surface temperature of the ice/snow and tb is the lowest layer temperature (not the bottom temperature, which is set to Tfreezi) all in (K)
+   real(rk), public, target            :: ice_uvic_ts
+   real(rk), public, target            :: ice_uvic_tb
+   real(rk), public, target            :: ice_uvic_swr_0
+   real(rk), public, target            :: ice_uvic_precip_i
+   real(rk), public, target            :: ice_uvic_sfall_i
+   real(rk), public, target            :: ice_uvic_parb
+   real(rk), public, target            :: ice_uvic_parui
+   real(rk), public, target            :: ice_uvic_topmelt       ! top melting - ice mass melted at the surface (snow+ice)  at time step(m)     
+   real(rk), public, target            :: ice_uvic_botmelt       ! bottom melting - ice mass melted at the ice bottom at time step(m) 
+   real(rk), public, target            :: ice_uvic_topgrowth     ! top growth ice mass growth at slab surface due to snow submersion (m)
+   real(rk), public, target            :: ice_uvic_botgrowth     ! bottom growth - ice mass growth at the ice bottom at time step (m) 
+   real(rk), public, target            :: ice_uvic_termelt       ! internal melting - ice mass melted in the ice interior at time step (m)
+   real(rk), public, target            :: ice_uvic_Fh            ! interface heat flux (W/m2)
+   real(rk), public                    :: ice_uvic_Ff            ! interface freshwater flux (m s-1)
+   real(rk), public                     :: ice_uvic_Fs            ! interface salt flux - (ppt m s-1)
+   real(rk), public                      :: ice_uvic_Sicebulk
+   real(rk), public                     :: ice_uvic_Hmix                ! transferred energy - check  (m)
+                                       !   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
+                                       !                 the SWR which crosses the ice slab and reach the water. keep it for now
+   real(rk), public                   :: ice_uvic_Aice               ! ice area fraction which is : open  
+   real(rk), public                  :: ice_uvic_Asnow              ! ice area fraction which is : snow       
+   real(rk), public, target            :: ice_uvic_Amelt              ! ice area fraction which is : meltpond  
+   real(rk), public                    :: ice_uvic_hm
+!  University of Victoria ice model: allocatable variables
+!  ice_uvic_Tice  - temperature array (dimensioned nlay+1), Tice(1) is the
+!                 upper surface temperature, Tice(nlay+1) is the bottom
+!                 temperature, remaining values at layer interfaces (K)
+  
+   !real(rk), allocatable, target, public :: Tice(:) --> should I decalre them like this, this is how they are declared in the winton model 
+  
+   real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Tice !--> exists above as Tice(:) :: Tice(nilay+1)  ! ice layer temperature Tice(nilay +1)(deg-C)
+   !real(rk), allocatable, target, public          :: ice_uvic_Cond(:)
+   real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Cond  ! thermal conductivities defined at the 
+                                                                           ! centre of each layer Cond(nilay)(W m-1 K-1)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_rhoCp ! volumetric heat capacities defined at 
+                                                                           ! the centre of each layer rhoCp(nilay)(J m-3 K-1)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_Sint  ! internal heat source due to penetrating 
+                                                                           ! short wave radiation Sint(nilay)(W m-3)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_dzi   ! layer thicknesses dzi(nilay)(m)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_zi    ! layer interface depths zi(nilay+1)(m)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_Told  ! ice temperature two time steps 
+                                                                           ! previous to calculation of outgoing 
+                                                                           ! long-wave flux in SEBUDGET Told (nilay+1) (K)
+   real(rk), public, dimension(:), allocatable, target            :: ice_uvic_Pari  !photosynthatically available radiation in ice (W m-2)
+   
+   real(rk), public, dimension(:), allocatable           :: ice_uvic_dum
+   real(rk), public, dimension(:), allocatable           :: ice_uvic_dzice
+   real(rk), public, dimension(:), allocatable           :: ice_uvic_zice
+
+!-------------------------------------------------------------------------------------------------------------
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
