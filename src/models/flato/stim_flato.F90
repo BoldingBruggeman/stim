@@ -77,6 +77,17 @@
 !Flato 
    real(rk), pointer :: hi,hs  ! jpnote: keep for flato
 
+   !for pointer 
+   real(rk), pointer :: ice_hi, ice_hs 
+   real(rk), pointer :: swr_0,precip_i,sfall_i 
+   real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
+   real(rk), pointer :: Fh,Ff,Fs 
+   real(rk), pointer :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
+   real(rk), pointer :: Cond,rhoCp,Sint,dzi,zi,Told,Pari 
+   !parb,parui
+   !Tice => ice_uvic_Tice
+  
+
 !FLATO
 ! LOCAL VARIABLES: 
 !   rhosnow     - snow density (kg m-3)
@@ -216,6 +227,9 @@ subroutine init_stim_flato(Ta)
 !BOC
    if (runwintonflato .eq. 1) then  !winton specific 
 
+
+   hs => Hsnow !keep for flato
+   hi => Hice  !keep for flato    !should I change to ice_hi ? 
    trn => transmissivity
    Ts => Tice_surface
    Ts = Ta
@@ -231,8 +245,39 @@ subroutine init_stim_flato(Ta)
 
    endif
 
-   hs => Hsnow !keep for flato
-   hi => Hice  !keep for flato 
+  
+
+   !pointers from flato  --> so I dnot
+   ice_hi => Hsnow
+   ice_hs => Hice
+   swr_0 => ice_uvic_swr_0
+   precip_i => ice_uvic_precip_i
+   sfall_i => ice_uvic_sfall_i
+   !parb,parui
+   TopMelt => ice_uvic_topmelt
+   Botmelt => ice_uvic_botmelt 
+   TerMelt => ice_uvic_termelt 
+   TopGrowth => ice_uvic_topgrowth
+   BotGrowth => ice_uvic_botgrowth
+   Fh => ice_uvic_Fh
+   Ff => ice_uvic_Ff
+   Fs => ice_uvic_Fs
+   Sice_bulk => ice_uvic_Sicebulk
+   Hmix => ice_uvic_Hmix
+   Aice_i => ice_uvic_Aice
+   Asnow_i => ice_uvic_Asnow
+   Amelt_i => ice_uvic_Amelt
+   ice_hm =>  ice_uvic_hm
+
+   !Tice => ice_uvic_Tice(nilay+1)
+   Cond => ice_uvic_Cond(nilay)
+   rhoCp => ice_uvic_rhoCp(nilay)
+   Sint => ice_uvic_Sint(nilay+1) 
+   dzi => ice_uvic_dzi(nilay) 
+   zi => ice_uvic_zi(nlmax)
+   Told => ice_uvic_Told(nilay+1)
+   Pari => ice_uvic_Pari(nilay+1)
+
 
    ! for flato ??? jpnote 
    !--------------
@@ -692,7 +737,7 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 ! !INPUT PARAMETERS:
    real(rk), intent(in)     :: dz !--> h from meanflow
    !real(rk), intent(in)    :: h  ! sea surface layer thickness --> is this the same as h 
-   real(rk), intent(in)     :: dt ! ocean timestep (sec) 
+   real(rk), intent(in)     :: dt ! ocean timestep (sec) ! dto??? 
    integer, intent(in)     :: julianday ! this julian day --> from time
    integer, intent(in)     :: secondsofday ! seconds for this day -->  from time
    real(rk), intent(in)    :: longitude    ! longitude for this point --> longitude from gotm
@@ -713,7 +758,8 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
    integer, intent(in)       :: back_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
-   
+    
+   ! !INPUT/OUTPUT PARAMETERS:
    real(rk), intent(inout)   :: alb   ! surface albedo - water, ice/snow-total
    real(rk), intent(inout)   :: heat  ! surface heat flux
 
@@ -728,6 +774,16 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: ohflux !heat flux from ocean into ice underside (W m-2)
 !NSnote, not sure what evap is for
+
+
+   !for fh .. as pointers 
+   !declare as local 
+   real(rk) :: ice_hi, ice_hs 
+   real(rk) :: Fh,Ff,Fs 
+   real(rk) :: swr_0,precip_i,sfall_i 
+   real(rk) :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
+   real(rk) :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
+   real(rk), dimension(:), allocatable  :: Cond,rhoCp,Sint,dzi,zi,Told,Pari
 
 
 #if 0
@@ -762,20 +818,230 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 
 
 
-   call open_water(I_0,depmix,sst,heat,precip)
+   call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
+                     !nilay,I_0,Sice_bulk,Hmix,Tice,depmix,TSS,Fh,heat,precip,precip_i)
 
-   call nr_iterate(hum_method,back_radiation_method,fluxes_method, &
-                  airt,hum,cloud,I_0,Hice,Hsnow,latitude,u10,v10,precip, &
-                  airp,evap,albedo)
+   call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
+                  airt,hum,cloud,I_0,Told,Tice,Pari,&
+                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                  latitude,u10,v10,precip,airp,evap,alb)
 
+   
+   !call cndiffus()
 
 end subroutine do_ice_uvic 
 ! EOC
 !-----------------------------------------------------------------------
 
 
-subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method, &
-                     airt,rh,cloud,I_0,Hice,Hsnow,lat,u10,v10,precip,airp,evap,alb)
+
+subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)   
+   !nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+! !USES:
+   
+   IMPLICIT NONE 
+
+! !INPUT PARAMETERS:
+    
+   ! !INPUT PARAMETERS:
+   integer, intent(in)     :: nilay
+   real(rk), intent(in)    :: I_0   !incoming swr for snow_dist 
+
+! !OUTPUT PARAMETERS:
+   real(rk),intent(out)   :: ice_hi,ice_hs
+   real(rk),intent(out)   :: dzi(nilay),zi(nilay+1)
+   real(rk),intent(out)   :: Sint(nilay+1),Cond(nilay),rhoCp(nilay) 
+   real(rk),intent(out)   :: Pari(nilay+1) 
+
+! !INOUT PARAMETERS:
+   real(rk),intent(inout)  :: Tice(nilay+1)
+   real(rk),intent(inout)  :: Sice_bulk
+!
+!BOC
+! !LOCAL VARIABLES:
+!   bctype 	- 2 element array defining upper and lower boundary
+!                 condition type. bctype(1) refers to upper boundary,
+!                 bctype(2) refers to lower boundary. Negative value
+!                 indicates temperature boundary condition, positive
+!                 value indicates flux boundary condition.
+   real(rk)                 ::      bctype(2)
+!   bcs 	- 2 element array containing boundary condition values.
+!                 bcs(1) refers to upper boundary, bcs(2) refers to lower
+!                 boundary. If temperature boundary condition, units: (K),
+!                 if flux boundary condition, units: (W m-2)
+!                 NOTE: flux is positive downward due to sign convention.
+   real(rk)                  ::      bcs(2)
+!   hlay	- ice or ice/snow thickness partitioned by ice layers (m)
+   real(rk)                   ::      hlay
+!   Ticeav - average ice temperature (interim)
+   real(rk)                   ::      Ticeav
+!   nslay	- number of snow layers
+!   integer                   ::      nslay
+!   Sice_bulk		- ice salinity used in parameterization of heat capacity
+!    		  and conductivity (ppt)
+   real(rk)                   ::      snlaythick,Tbot,thicklay,Ttop
+!   fluxtsplit  - averaged surface flux over all 3 surface conditions
+   real(rk)                   :: fluxtsplit
+   integer                   ::      k
+!   hzero   - minimum ice thickness to avoid dividing by zero elsewhere in code
+   real(rk), parameter           :: hzero=1.D-03
+
+
+   call cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+
+end subroutine therm1d
+
+!-----------------------------------------------------------------------
+
+! !IROUTINE: 
+!
+! !INTERFACE:
+subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+   !bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+! !USES:
+   IMPLICIT NONE
+
+! !INPUT PARAMETERS:
+   real(rk), intent(in)        :: bctype(2),bcs(2)
+   integer, intent(in)         :: nilay
+   real(rk), intent(in)        :: dzi(nilay),rhoCp(nilay),Cond(nilay)
+   real(rk), intent(in)        :: Sint(nilay+1)
+! !INOUT PARAMETERS:
+   real(rk), intent(inout)        :: Tice(nilay+1)
+! !LOCAL VARIABLES:
+! coefficients for tridiagonal matrix
+   real(rk)                  ::      C(nlmax+1,3)
+! coefficients for RHS vector
+   real(rk)                  ::      R(nlmax+1)    
+! ratio of conductivity to heat capacity
+   real(rk)                  ::      rCpav(nlmax+1)      
+! array to store previous temperature 
+   real(rk)                  ::      To(nlmax+1)     
+   integer                   ::      j,l
+
+
+   call trisol(C,R,nilay+1,Tice)
+
+end subroutine cndiffus
+
+
+!-----------------------------------------------------------------------
+subroutine trisol(C,R,n,Tice)
+
+! !USES:
+   IMPLICIT NONE
+
+   ! !INPUT PARAMETERS:
+   real(rk), intent(in)        :: C(nlmax+1,3)
+   real(rk), intent(in)        :: R(nlmax+1)
+!       n -  size of system of equations
+   integer, intent(in)         :: n   !--> corresponds to nilay+1 
+   real(rk), intent(inout)     :: Tice(n)
+
+! !LOCAL VARIABLES:
+! coefficients for 
+   integer,parameter         :: nmax=100
+   real(rk),parameter        :: eps=1.D-12
+   real(rk)                  :: D1      
+   real(rk)                  :: temp(nmax)
+   integer                   :: j  
+
+!integer :: n
+   !n = nilay+1  ??? jpnote 
+   !print *,'trisol n', n 
+
+end subroutine trisol
+!-----------------------------------------------------------------------
+
+subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
+                     TopMelt,BotGrowth,BotMelt,Hmix,ohflux)
+
+ ! !USES:
+   IMPLICIT NONE
+!
+!INPUT PARAMETERS:
+      real(rk), intent(in)   :: rhowater
+      integer, intent(in)    :: nilay
+      real(rk), intent(in)   :: rhoCp(nilay),dzi(nilay)
+      real(rk), intent(in)   :: ohflux
+!OUTPUT PARAMETERS:
+   
+!INOUT PARAMETERS:
+      real(rk), intent(inout)   :: BotGrowth,BotMelt
+      real(rk), intent(inout)   :: TopGrowth,TerMelt,TopMelt,Hmix
+      real(rk), intent(inout)   :: Tice(nilay+1)                    
+
+
+! !LOCAL VARIABLES:
+! coefficients for 
+   real(rk)                  ::  dhib,dhst,dhs,dhi,Ts
+! coefficients for 
+   real(rk)                  ::  Tl    
+!   snsub       - submerged snow mass per unit area (kg m-2)
+   real(rk)                  ::  snsub    
+!   porewat     - mass per unit area or pore water frozen into submerged
+!                 snow (kg m-2)
+   real(rk)                 ::  porewat   
+   integer                   ::  k  
+
+
+   call surfmelt(Tice(1),TopMelt)
+
+end subroutine growthtb
+
+!-----------------------------------------------------------------------
+
+subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
+                     TTss,airt,rh,cloud,ice_hi,ice_hs,&
+                     lat,u10,v10,precip,airp,evap)
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+      integer, intent(in)       :: back_radiation_method ! method for LW
+      integer, intent(in)       :: hum_method ! method for humidity
+      integer, intent(in)       :: fluxes_method ! method for fluxes
+      real(rk), intent(in)      :: TTss,airt,rh,cloud
+      real(rk), intent(in)      :: lat   ! latitude for this point
+      real(rk), intent(in)      :: u10   ! 10 m wind u-component
+      real(rk), intent(in)      :: v10   ! 10 m wind v-component
+      real(rk), intent(in)      :: airp  ! sea surface pressure
+! !INOUT PARAMETERS:
+      real(rk), intent(inout)   :: precip! freshwater precipitation (m/s)
+      real(rk), intent(inout)   :: evap! freshwater evaporation (m/s)
+      real(rk), intent(inout)   :: ice_hi,ice_hs
+! !REVISION HISTORY:
+
+      ! !LOCAL VARIABLES:
+
+end subroutine sebudget
+
+!-----------------------------------------------------------------------
+
+subroutine surfmelt(Ts,TopMelt)
+
+   real(rk), intent(in)  :: Ts  !Tice(1)
+   real(rk)              :: hmeltinput !???
+
+! !OUTPUT PARAMETERS:
+
+! !INOUT PARAMETERS:
+   real(rk), intent(inout) :: TopMelt
+
+! !LOCAL VARIABLES:
+! coefficients for 
+   real(rk)                 ::   Fdiv,dmsw,dmi,Fdivice,Fdivsnow  
+
+end subroutine surfmelt
+
+!-----------------------------------------------------------------------
+
+
+
+subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
+                        nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
+                        Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                        lat,u10,v10,precip,airp,evap,alb)
 
    !hum_method,back_radiation_method,fluxes_method,&
    !nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
@@ -804,16 +1070,24 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method, &
    integer, intent(in)       :: back_radiation_method ! method for LW
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
+   integer, intent(in)         :: nilay
    real(rk), intent(in)      :: airt
    real(rk), intent(in)      :: rh
-   real(rk), intent(in)      ::cloud 
+   real(rk), intent(in)      :: cloud 
    real(rk), intent(in)      :: lat   ! latitude for this point
    real(rk), intent(in)      :: u10   ! 10 m wind u-component
    real(rk), intent(in)      :: v10   ! 10 m wind v-component
    real(rk), intent(in)      :: airp  ! sea surface pressure
 ! !OUTPUT PARAMETERS:
+   real(rk), intent(out)       :: Sice_bulk
+   real(rk), intent(out)       :: Told(nilay+1)
+   real(rk), intent(out)       :: dzi(nilay),zi(nilay+1)
+   real(rk), intent(out)       :: Sint(nilay+1),Cond(nilay),rhoCp(nilay) 
    real(rk), intent(out)       :: alb 
+   real(rk), intent(out)       :: Pari(nilay+1)
 ! !INOUT PARAMETERS:
+   real(rk), intent(inout)     :: Tice(nilay+1)
+   real(rk), intent(inout)     :: ice_hi,ice_hs
    real(rk), intent(inout)     :: I_0
    real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
    real(rk), intent(inout)     :: evap! freshwater evaporation (m/s)
@@ -827,13 +1101,18 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method, &
    integer                   ::    nrit,ksearch,kb,l
    real(rk),parameter        ::    toler=1.D-02 
 
+   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                       Ts,airt,rh,cloud,ice_hi,ice_hs,&
+                       lat,u10,v10,precip,airp,evap)
+
 
 end subroutine nr_iterate 
 
 !-----------------------------------------------------------------------
 
 ! !INTERFACE:
-subroutine open_water(I_0,hSS,sst,heat,precip)
+subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,precip_i)
+   !open_water(I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
    
    !nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
    !nilay --> yaml
@@ -862,12 +1141,19 @@ subroutine open_water(I_0,hSS,sst,heat,precip)
 ! !USES:
    IMPLICIT NONE
 ! !INPUT PARAMETERS:
+   integer,intent(in)   :: nilay
    real(rk),intent(in) :: hSS !--> [[ depmix ]] just named something different when passed to subroutine 
 !INOUT PARAMETERS
-   real(rk), intent(inout)   :: I_0
-   real(rk), intent(inout)   :: heat
-   real(rk), intent(in)      :: precip !H!
-   real(rk), intent(inout)  :: sst     !SST     ! sea surface temperature
+   real(rk), intent(inout) :: Sice_bulk
+   real(rk), intent(inout) :: Hmix
+   real(rk), intent(inout) :: Tice(nilay+1)
+   real(rk), intent(inout) :: Fh ! interface heat flux (W/m2)
+   real(rk), intent(inout) :: sst !SST  ! ocean surface temperature (C)   ! sea surface temperature
+   real(rk), intent(inout) :: I_0
+   real(rk), intent(inout) :: heat
+   real(rk), intent(in)    :: precip !H!
+   real(rk), intent(out)   :: precip_i !H!
+   
 
 ! !LOCAL VARIABLES:
 ! coefficients for 
@@ -899,7 +1185,7 @@ subroutine open_water(I_0,hSS,sst,heat,precip)
    ! since there is actually no ice yet)
    !  
          do k=1,nilay+1
-            ice_uvic_Tice(k)=Tmix
+            Tice(k)=Tmix
          enddo
    
    !   Check if mixed layer temperature is below freezing. If so,
@@ -910,7 +1196,7 @@ subroutine open_water(I_0,hSS,sst,heat,precip)
             
             dmsi=(Tfreezi-Tmix)*hSS*rCpmix/Hfi
             simass=simass+dmsi
-            ice_uvic_Hmix=0.D+00
+            Hmix=0.D+00
             Tmix=Tfreezi 
    !reset TSS here!!!  
             SST=Tmix-kelvin
@@ -920,12 +1206,12 @@ subroutine open_water(I_0,hSS,sst,heat,precip)
             if(ice_salt) then
                Sni=4.606D+00+0.91603D+00/hh0
             endif
-            ice_uvic_Sicebulk=Sni
+            Sice_bulk=Sni
    
    !   New ice temperature
    
             do k=1,nilay+1
-               ice_uvic_Tice(k)=Tfreezi
+               Tice(k)=Tfreezi
             enddo
    
    ! need to set heat and I_0 to zero since this negtive heat has already 
@@ -937,18 +1223,18 @@ subroutine open_water(I_0,hSS,sst,heat,precip)
    !         Fh=
           else
             !just open water, no ice existing, no melt or growth
-            ice_uvic_Tice=Tfreezi
+            Tice=Tfreezi
             dmsi=0 
-            ice_uvic_Fh=0 
+            Fh=0 
             snmass=0
             simass=0
             Iceflux(2)=0
-            ice_uvic_Sicebulk=Sni
+            Sice_bulk=Sni
             I_0=I_0
             heat=heat
             ice_uvic_Hmix=0
          endif
-         ice_uvic_precip_i=precip !H!
+         precip_i=precip !H!
       
       return
 
@@ -958,74 +1244,6 @@ end subroutine open_water
 
 !-----------------------------------------------------------------------
 
-
-subroutine therm1d(I_0)   
-   !nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
-! !USES:
-   
-   implicit none
-
-! !INPUT PARAMETERS:
-   real(rk), intent(in)    :: I_0   !incoming swr for snow_dist  
-!
-!BOC
-! !LOCAL VARIABLES:
-!   bctype 	- 2 element array defining upper and lower boundary
-!                 condition type. bctype(1) refers to upper boundary,
-!                 bctype(2) refers to lower boundary. Negative value
-!                 indicates temperature boundary condition, positive
-!                 value indicates flux boundary condition.
-   real(rk)                 ::      bctype(2)
-!   bcs 	- 2 element array containing boundary condition values.
-!                 bcs(1) refers to upper boundary, bcs(2) refers to lower
-!                 boundary. If temperature boundary condition, units: (K),
-!                 if flux boundary condition, units: (W m-2)
-!                 NOTE: flux is positive downward due to sign convention.
-   real(rk)                  ::      bcs(2)
-!   hlay	- ice or ice/snow thickness partitioned by ice layers (m)
-   real(rk)                   ::      hlay
-!   Ticeav - average ice temperature (interim)
-   real(rk)                   ::      Ticeav
-!   nslay	- number of snow layers
-!   integer                   ::      nslay
-!   Sice_bulk		- ice salinity used in parameterization of heat capacity
-!    		  and conductivity (ppt)
-   real(rk)                   ::      snlaythick,Tbot,thicklay,Ttop
-!   fluxtsplit  - averaged surface flux over all 3 surface conditions
-   real(rk)                   :: fluxtsplit
-   integer                   ::      k
-!   hzero   - minimum ice thickness to avoid dividing by zero elsewhere in code
-   real(rk), parameter           :: hzero=1.D-03
-
-end subroutine therm1d
-
-!-----------------------------------------------------------------------
-
-! !IROUTINE: 
-!
-! !INTERFACE:
-subroutine cndiffus()
-   !bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
-! !USES:
-   
-   implicit none
-
-! !LOCAL VARIABLES:
-! coefficients for tridiagonal matrix
-   real(rk)                  ::      C(nlmax+1,3)
-! coefficients for RHS vector
-   real(rk)                  ::      R(nlmax+1)    
-! ratio of conductivity to heat capacity
-   real(rk)                  ::      rCpav(nlmax+1)      
-! array to store previous temperature 
-   real(rk)                  ::      To(nlmax+1)     
-   integer                   ::      j,l
-
-end subroutine cndiffus
-
-
-
-!-----------------------------------------------------------------------
 
 
 
