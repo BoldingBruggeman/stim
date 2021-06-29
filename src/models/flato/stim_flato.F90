@@ -660,7 +660,7 @@ end subroutine init_stim_flato
 !BOC
 
 !if (runwintonflato .eq. 1)then
-
+#if 0
    !LEVEL0 'do_stim_flato'
    tmelt = 0._rk
    bmelt = 0._rk
@@ -709,7 +709,7 @@ hs = 0._rk
 
    return
 
-!end if 
+#endif 
 
 end subroutine do_stim_flato
 
@@ -1043,6 +1043,22 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
                         Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
                         lat,u10,v10,precip,airp,evap,alb)
 
+                        !                        
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to perform Newton-Raphson iteration to solve for a
+!  surface temperature consistent with the surface energy budget
+!  including conductive heat flux. If no solution is found in
+!  initial Newton-Raphson iteration, a bisection algorithm is
+!  used.  NOTE: if uppermost layer is greater than 0.1m thick,
+!  surface temperature is defined as the temperature at the surface
+!  Tice(1); however, if uppermost layer is less than 0.1m thick, surface
+!  temperature is defined as the average temperature of the top layer.
+!  This prevents rapid fluctuations in surface temperature and so
+!  allows a longer time step to be taken.
+!*************************************************************************
+
    !hum_method,back_radiation_method,fluxes_method,&
    !nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
    !Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
@@ -1101,10 +1117,119 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    integer                   ::    nrit,ksearch,kb,l
    real(rk),parameter        ::    toler=1.D-02 
 
-   call sebudget(hum_method,back_radiation_method,fluxes_method,&
-                       Ts,airt,rh,cloud,ice_hi,ice_hs,&
-                       lat,u10,v10,precip,airp,evap)
+#if 0
 
+!      LEVEL1'nr_iterate'
+!
+!
+!...Save initial temperature profile
+!
+   do l=1,nilay+1
+      Told(l)=Tice(l)
+   enddo
+   
+!...First guess at surface temperature
+!
+   Ts=Tice(1)
+
+!-----------------------------------------------------------------------------
+!--- Start initial Newton-Raphson iteration - do a maximum of 5 iterations ---
+!-----------------------------------------------------------------------------
+   
+   do nrit=1,5
+      !      
+      !......calculate surface energy budget terms
+               call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                             Ts,airt,rh,cloud,ice_hi,ice_hs,&
+                             lat,u10,v10,precip,airp,evap)
+               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+      !
+      !
+      !......restore intial temperature profile as therm1d takes a forward time step
+               do l=1,nilay+1
+                  Tice(l)=Told(l)
+               enddo
+      !
+      !......solve unsteady heat conduction equation to get new temperature profile 
+      !......and bottom flux after one time step
+               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,&
+                     rhoCp,zi,Sint,Pari,Tice,I_0)
+      !
+      !......now find mismatch in assumed and computed surface temperature
+               fTs=Ts-Tice(1)
+      !
+      !......stop iterating if mismatch is less than tolerance
+               if(abs(fTs).lt.toler) then
+      !           print*,'Newton-Raphson scheme met tolerance after', &
+      !                          nrit-1,'iterations'
+                 go to 987
+               endif
+      !
+      !......re-do above calculations with slightly increased and decreased
+      !......initial temperature to calculate first derivative by centred
+      !......finite difference
+               dTemp=0.1
+               Tsp=Ts+dTemp
+               call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                             Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+                             lat,u10,v10,precip,airp,evap)
+               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+      !
+               do l=1,nilay+1
+                  Tice(l)=Told(l)
+               enddo
+               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+                  Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+               fTsdT1=Tsp-Tice(1)
+               Tsp=Ts-dTemp
+               call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                             Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+                             lat,u10,v10,precip,airp,evap)
+               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+      !
+               do l=1,nilay+1
+                  Tice(l)=Told(l)
+               enddo
+               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+                Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+               fTsdT2=Tsp-Tice(1)
+      !
+      !......if derivative vanishes, take solution obtained at this point
+      !......and don't iterate any further
+               if(abs(fTsdT1-fTsdT2).lt.1.D-02) then
+                 print*,'fTsdT1~=fTsdT2 after ',nrit-1,' iterations'
+                 go to 987
+               endif
+      !
+      !......otherwise, compute derivative and hence next guess from
+      !......Newton-Raphson formula
+               fprime=(fTsdT1-fTsdT2)/(2.D+00*dTemp)
+               Tsnew=Ts-fTs/fprime
+      !
+      !......check error and stop iterating if tolerance is met
+               Error=Tsnew-Ts
+               if(abs(Tsnew-Ts).lt.toler) then
+      !           print*,'Newton-Raphson scheme met tolerance after', &
+      !                          nrit,'iterations'
+                 go to 987
+               endif
+      !
+      !......if another iteration is required, update surface temperature
+      !......and try again
+               Ts=Tsnew
+            enddo
+      !
+      !...If iteration has not reached a solution at this point, (which is
+      !...rare) we have to resort to a cruder, brute force approach. So, ...
+      !
+            print*,'***Newton-Raphson scheme failed: Error =',Error
+            print*,'***Starting method of Bisection'
+  
+
+            987 continue
+            
+#endif        
+   return
 
 end subroutine nr_iterate 
 
@@ -1240,11 +1365,100 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,preci
 
 end subroutine open_water
 
+!-----------------------------------------------------------------------
+!call saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
+!rhoice,rhosnow,rhowater,rhowaterfresh,zi,Tice,Sice_bulk,Ff,Fs, &
+ !TopGrowth,BotGrowth,TopMelt,BotMelt,TerMelt)
+subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
+                                 rhoice,rhosnow,rhow,rhof,zi,Tice,Sice_bulk,Ff,Fs, &
+                                 higs,higb,himb,hims,himi)
+  
+! !USES:
 
+   IMPLICIT NONE
+
+   !INPUT PARAMETERS:
+      
+      integer, intent(in)  :: nilay
+      real(rk), intent(in) :: rhow,rhof,dti
+      real(rk), intent(in) :: rhoice,rhosnow
+      real(rk), intent(in) :: SSS
+      real(rk), intent(in) :: Tice(nilay+1)
+      real(rk), intent(in) :: zi(nilay+1)
+      real(rk), intent(in) :: simasso,snmasso,meltmasso
+      real(rk), intent(inout) :: Sice_bulk
+      real(rk), intent(out) :: Fs,Ff  
+! Partitionated growth/melt ice (thicknesses time-step diff in m):
+! higs - thickness of ice grown at surface (snow-ice formation, from TopGrowth)
+! higb - thickness of ice grown at bottom (abblation, from Botgrowth)
+! hims - thickness of ice melt surface (snow+ice, from TopMelt)
+! himb - thickness of ice melt bottom (from BotMelt)
+! himi - thickness of ice melt internal (internal ice melting, from TerMelt)
+      real(rk), intent(in) :: higs,higb,himb,hims,himi
+         
+! !LOCAL VARIABLES:
+      logical               ::   first=.true.
+      integer               ::   k
+      real(rk)             ::   V,f=0,ratei,rates,alpha
+! Salinity local variables [ppt]:
+! So -  old timestep bulk salinity
+! Ssi - salinity in the ice formed from snow depression
+! Sg  - equilibrium salinity for winter gravity drainage
+! Sfl - equilibrium salinity for summer flushing
+! S1  - first salinity transition
+! S2  - second salinity transition
+! Szero - linear salinity profile
+!
+      real(rk)                    ::   So,Ssi
+      real(rk),dimension(nilay+1) ::   Szero, Sice
+      real(rk), parameter          ::   Sg=5.D+00,Sfl=2.D+00
+      real(rk),parameter          ::   S1=3.5D+00,S2=4.5D+00
+! Tg, Tfl - V09 time scales for gravity drainage (20 days) and
+! summer flushing (10 days) [sec]
+!
+      real(rk), parameter    :: Tg=1728000,Tfl=864000
+
+! Terms of the salinity conservation equation [ppt]
+!
+      real(rk)             ::   x1,x2,x3,x4
+   
+! Terms for the equivalent salt flux equation
+      real(rk)              ::   xx1,xx2,xx3,xx4
+   
+! Terms for salt and freshwater surface flux
+! Ff - freshwater flux [kg m-2 s-1]
+! Fs - Total surface salt flux (Fs=Fb+Feq) [ppt m s-1 kg m-3] 
+! Fb - brine drainage []
+! Feq - equivalent salt flux due to growth/melt sea ice processes [ppt m s-1 kg m-3]
+      real(rk)              ::   Fb,Feq
+
+
+end subroutine saltice_prof_simple
 
 !-----------------------------------------------------------------------
 
+! call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
+! !USES:
 
+      IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+      real(rk), intent(in)      :: I_0,ice_hs,ice_hi,TTss
+! !OUTPUT PARAMETERS:
+      real(rk), intent(out)      :: alb,PenSW
+! !INPUT/OUTPUT PARAMETERS:
+      real(rk), intent(inout)      :: fluxt
+!
+! !LOCAL VARIABLES:
+! snow_dist
+      real(rk)                  :: I_0_tmp
+!
+
+end subroutine albedo_ice_uvic
+
+
+!-----------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------
@@ -1254,34 +1468,34 @@ end subroutine open_water
 ! !IROUTINE: Cleaning up the mean flow variables
 !
 ! !INTERFACE:
-subroutine clean_ice_uvic()  !still need to initialize/call this subroutine from outside this file
-   !
-   ! !DESCRIPTION:
-   !  De-allocates all memory allocated via init\_icemodel()
-   !
-   ! !USES:
-   !  use ncdfout, only: close_ncdf
-   
+   subroutine clean_ice_uvic()  !still need to initialize/call this subroutine from outside this file
+!
+! !DESCRIPTION:
+!  De-allocates all memory allocated via init\_icemodel()
+!
+! !USES:
+!  use ncdfout, only: close_ncdf
+
       IMPLICIT NONE
-   !
-   ! !INPUT PARAMETERS:
-   !
-   ! !REVISION HISTORY:
-   !  Original author(s): 
-   !
-   !  See log for the icemodel module
-   !
-   !EOP
-   !-----------------------------------------------------------------------
-   !BOC
-      !LEVEL1 'clean_ice_uvic'  !commented for now 
-   
-     !LEVEL3 'closing ice.nc file...'  !commented for now 
-   !   call close_ncdf()
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): 
+!
+!  See log for the icemodel module
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   !LEVEL1 'clean_ice_uvic'  !commented for now 
+
+   !LEVEL3 'closing ice.nc file...'  !commented for now 
+!   call close_ncdf()
    
       return
 
-      end subroutine clean_ice_uvic
+   end subroutine clean_ice_uvic
 !EOC
 !----------------------------------------------------------------------
 ! end internal subroutines
