@@ -764,11 +764,71 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 
    call open_water(I_0,depmix,sst,heat,precip)
 
+   call nr_iterate(hum_method,back_radiation_method,fluxes_method, &
+                  airt,hum,cloud,I_0,Hice,Hsnow,latitude,u10,v10,precip, &
+                  airp,evap,albedo)
+
 
 end subroutine do_ice_uvic 
 ! EOC
 !-----------------------------------------------------------------------
 
+
+subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method, &
+                     airt,rh,cloud,I_0,Hice,Hsnow,lat,u10,v10,precip,airp,evap,alb)
+
+   !hum_method,back_radiation_method,fluxes_method,&
+   !nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
+   !Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+   !lat,u10,v10,precip,airp,evap,alb)
+
+   !Told -> ice_uvic_Told     Told(nilay+1)
+   !Tice -> ice_uvic_Tice     Tice(nilay+1)
+   !Pari -> ice_uvic_Pari     Pari(nilay+1)
+   !Sice_bulk -> ice_uvic_Sicebulk
+   !ice_hi -> hice
+   !ice_hs -> hsnow
+   !dzi -> ice_uvic_dzi      dzi(nilay)
+   !Cond -> ice_uvic_cond     Cond(nilay)
+   !rhoCp -> ice_uvic_rhoCp    rhoCp(nilay) 
+   !!zi -> ice_uvic_zi        zi(nilay+1)
+   ! Sint -> ice_uvic_sint    Sint(nilay+1)
+   !lat -> latitude
+   !alb -> labedo 
+   !rh --> hum 
+
+! !USES:
+   IMPLICIT NONE
+
+! !INPUT PARAMETERS:  
+   integer, intent(in)       :: back_radiation_method ! method for LW
+   integer, intent(in)       :: hum_method ! method for humidity
+   integer, intent(in)       :: fluxes_method ! method for fluxes
+   real(rk), intent(in)      :: airt
+   real(rk), intent(in)      :: rh
+   real(rk), intent(in)      ::cloud 
+   real(rk), intent(in)      :: lat   ! latitude for this point
+   real(rk), intent(in)      :: u10   ! 10 m wind u-component
+   real(rk), intent(in)      :: v10   ! 10 m wind v-component
+   real(rk), intent(in)      :: airp  ! sea surface pressure
+! !OUTPUT PARAMETERS:
+   real(rk), intent(out)       :: alb 
+! !INOUT PARAMETERS:
+   real(rk), intent(inout)     :: I_0
+   real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
+   real(rk), intent(inout)     :: evap! freshwater evaporation (m/s)
+
+
+! !LOCAL VARIABLES:
+! coefficients for 
+   real(rk)                 ::    fTs,dTemp,Tsp,fTsdT1,fTsdT2
+   real(rk)                  ::    fprime,Tsnew,Error,Ts1,fTs1
+   real(rk)                  ::    dTs,Tsu,fTsu,Ts2,Tsm,fTsm,fTsl, Tsl,Ts  
+   integer                   ::    nrit,ksearch,kb,l
+   real(rk),parameter        ::    toler=1.D-02 
+
+
+end subroutine nr_iterate 
 
 !-----------------------------------------------------------------------
 
