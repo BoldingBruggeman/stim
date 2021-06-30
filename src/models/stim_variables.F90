@@ -191,12 +191,12 @@
 !-------------------------------------------------------------------------------------------------------------
   ! integer, public                     :: ice_method !jpnote: --> read in from yml not needed 
 !  Simple 'ice model'
-   !real(rk), public                    :: ice_layer
+   !real(rk), public                    :: ice_layer  --> not used 
 !  Winton/UVIC ice model
- !  real(rk), public, target            :: ice_hs,ice_hi  --> jpnote: exists as hice and hsnow
+  ! real(rk), public, target            :: ice_hs,ice_hi  !--> jpnote: exists as hice and hsnow, and hi and hs for winton - defining it again, maybe remove if redundant 
 !  Winton ice model
-   real(rk), public                    :: ice_ts,ice_T1,ice_T2
-   real(rk), public                    :: ice_tmelt,ice_bmelt
+  ! real(rk), public, target                    :: ice_ts,ice_T1,ice_T2
+   !real(rk), public, target                    :: ice_tmelt,ice_bmelt
 !  University of Victoria ice model
 ! ts,tb are the upper surface temperature of the ice/snow and tb is the lowest layer temperature (not the bottom temperature, which is set to Tfreezi) all in (K)
    real(rk), public, target            :: ice_uvic_ts
@@ -211,17 +211,24 @@
    real(rk), public, target            :: ice_uvic_topgrowth     ! top growth ice mass growth at slab surface due to snow submersion (m)
    real(rk), public, target            :: ice_uvic_botgrowth     ! bottom growth - ice mass growth at the ice bottom at time step (m) 
    real(rk), public, target            :: ice_uvic_termelt       ! internal melting - ice mass melted in the ice interior at time step (m)
-   real(rk), public, target            :: ice_uvic_Fh            ! interface heat flux (W/m2)
-   real(rk), public                    :: ice_uvic_Ff            ! interface freshwater flux (m s-1)
-   real(rk), public                     :: ice_uvic_Fs            ! interface salt flux - (ppt m s-1)
-   real(rk), public                      :: ice_uvic_Sicebulk
-   real(rk), public                     :: ice_uvic_Hmix                ! transferred energy - check  (m)
+   
+   !try to turn these into pointers::::
+   !real(rk), target, public :: Hsnow = 0._rk   ! Total snow thickness
+   !real(rk), target, public :: Hice = 0._rk   --> basing it off of this, what was done in winton 
+   real(rk), public, target            :: ice_uvic_Fh = 0._rk            ! interface heat flux (W/m2)
+   real(rk), public, target                 :: ice_uvic_Ff = 0._rk          ! interface freshwater flux (m s-1)
+   real(rk), public, target                    :: ice_uvic_Fs = 0._rk          ! interface salt flux - (ppt m s-1)
+   
+  
+  
+   real(rk), public, target                      :: ice_uvic_Sicebulk
+   real(rk), public, target                     :: ice_uvic_Hmix                ! transferred energy - check  (m)
                                        !   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
                                        !                 the SWR which crosses the ice slab and reach the water. keep it for now
-   real(rk), public                   :: ice_uvic_Aice               ! ice area fraction which is : open  
-   real(rk), public                  :: ice_uvic_Asnow              ! ice area fraction which is : snow       
+   real(rk), public, target                  :: ice_uvic_Aice               ! ice area fraction which is : open  
+   real(rk), public, target                  :: ice_uvic_Asnow              ! ice area fraction which is : snow       
    real(rk), public, target            :: ice_uvic_Amelt              ! ice area fraction which is : meltpond  
-   real(rk), public                    :: ice_uvic_hm
+   real(rk), public , target                   :: ice_uvic_hm
 !  University of Victoria ice model: allocatable variables
 !  ice_uvic_Tice  - temperature array (dimensioned nlay+1), Tice(1) is the
 !                 upper surface temperature, Tice(nlay+1) is the bottom
