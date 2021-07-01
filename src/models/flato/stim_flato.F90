@@ -79,11 +79,12 @@
 
    !for pointer 
    real(rk), pointer :: ice_hi, ice_hs 
-   real(rk), pointer :: swr_0,precip_i,sfall_i 
-   real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
-   real(rk), pointer :: Fh,Ff,Fs 
-   real(rk), pointer :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
-   real(rk), pointer :: Cond,rhoCp,Sint,dzi,zi,Told,Pari 
+   !real(rk), pointer :: swr_0,precip_i,sfall_i 
+   !real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
+   !real(rk), pointer :: Fh,Ff,Fs 
+   !real(rk), pointer :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
+   !real(rk), pointer :: Cond,rhoCp,Sint,dzi,zi,Told,Pari 
+   !real(rk), pointer :: uvic_Tice
    !parb,parui
    !Tice => ice_uvic_Tice
   
@@ -243,42 +244,12 @@ subroutine init_stim_flato(Ta)
    bmelt => bottom_ice_energy
    fb => ocean_ice_flux
 
-   endif
+   
+
+   else
+
 
   
-
-   !pointers from flato  --> so I dnot
-   ice_hi => Hsnow
-   ice_hs => Hice
-   swr_0 => ice_uvic_swr_0
-   precip_i => ice_uvic_precip_i
-   sfall_i => ice_uvic_sfall_i
-   !parb,parui
-   TopMelt => ice_uvic_topmelt
-   Botmelt => ice_uvic_botmelt 
-   TerMelt => ice_uvic_termelt 
-   TopGrowth => ice_uvic_topgrowth
-   BotGrowth => ice_uvic_botgrowth
-   Fh => ice_uvic_Fh
-   Ff => ice_uvic_Ff
-   Fs => ice_uvic_Fs
-   Sice_bulk => ice_uvic_Sicebulk
-   Hmix => ice_uvic_Hmix
-   Aice_i => ice_uvic_Aice
-   Asnow_i => ice_uvic_Asnow
-   Amelt_i => ice_uvic_Amelt
-   ice_hm =>  ice_uvic_hm
-
-   !Tice => ice_uvic_Tice(nilay+1)
-   Cond => ice_uvic_Cond(nilay)
-   rhoCp => ice_uvic_rhoCp(nilay)
-   Sint => ice_uvic_Sint(nilay+1) 
-   dzi => ice_uvic_dzi(nilay) 
-   zi => ice_uvic_zi(nlmax)
-   Told => ice_uvic_Told(nilay+1)
-   Pari => ice_uvic_Pari(nilay+1)
-
-
    ! for flato ??? jpnote 
    !--------------
    !ts => Tice(1)                     !ice_uvic_ts=ice_uvic_Tice(1)
@@ -420,10 +391,46 @@ subroutine init_stim_flato(Ta)
       ice_uvic_Aice=0;ice_uvic_Asnow=0 
       ice_uvic_Amelt=0 
 
+      !not needed as long as ice_uvic is passed into subroutines called from do_ice_uvic 
+      !pointers from flato  --> so I dnot  
+      
+      !ice_hi => Hsnow
+      !ice_hs => Hice
+      !swr_0 => ice_uvic_swr_0
+      !precip_i => ice_uvic_precip_i
+      !sfall_i => ice_uvic_sfall_i
+      !parb,parui
+      !TopMelt => ice_uvic_topmelt
+      !Botmelt => ice_uvic_botmelt 
+      !TerMelt => ice_uvic_termelt 
+      !TopGrowth => ice_uvic_topgrowth
+      !BotGrowth => ice_uvic_botgrowth
+      !Fh => ice_uvic_Fh
+      !Ff => ice_uvic_Ff
+      !Fs => ice_uvic_Fs
+      !Sice_bulk => ice_uvic_Sicebulk
+      !Hmix => ice_uvic_Hmix
+      !Aice_i => ice_uvic_Aice
+      !Asnow_i => ice_uvic_Asnow
+      !Amelt_i => ice_uvic_Amelt
+      !ice_hm =>  ice_uvic_hm
+      
+      !uvic_Tice => ice_uvic_Tice(nilay+1) !test
+      !Tice => ice_uvic_Tice(nilay+1)
+      !Cond => ice_uvic_Cond(nilay)
+      !rhoCp => ice_uvic_rhoCp(nilay)
+      !Sint => ice_uvic_Sint(nilay+1) 
+      !dzi => ice_uvic_dzi(nilay) 
+     ! zi => ice_uvic_zi(nlmax)
+      !Told => ice_uvic_Told(nilay+1)
+      !Pari => ice_uvic_Pari(nilay+1)
+
    !!case default
 !end select
-!-----------------------------------------------------------------------
 
+
+!-----------------------------------------------------------------------
+   endif
 !-------------------------------------------------------------------------------
 ! from ice.F90 
    !???
@@ -433,12 +440,7 @@ subroutine init_stim_flato(Ta)
    !ice_uvic_parui=ice_uvic_Pari(nilay+1)
 
 !-----------------------------------------------------------------------
-  
-  if (runwintonflato .eq. 0) then 
-   print *, '----------------------------------------------'
-   print *, 'not running winton in this model'
-   print *, '----------------------------------------------'
-  endif 
+
 #if 0 
    !printing Vars for Testing purposes
    print *, '----------------------------------------------'
@@ -579,9 +581,7 @@ subroutine init_stim_flato(Ta)
    print *, 'ice_uvic_dzice',ice_uvic_dzice
    print *, 'ice_uvic_zice',ice_uvic_zice
    print *, ''
- 
 
-   
 #endif 
 
    return
@@ -659,8 +659,6 @@ end subroutine init_stim_flato
 !-----------------------------------------------------------------------
 !BOC
 
-!if (runwintonflato .eq. 1)then
-#if 0
    !LEVEL0 'do_stim_flato'
    tmelt = 0._rk
    bmelt = 0._rk
@@ -708,8 +706,6 @@ hs = 0._rk
    end if
 
    return
-
-#endif 
 
 end subroutine do_stim_flato
 
@@ -778,12 +774,12 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 
    !for fh .. as pointers 
    !declare as local 
-   real(rk) :: ice_hi, ice_hs 
-   real(rk) :: Fh,Ff,Fs 
-   real(rk) :: swr_0,precip_i,sfall_i 
-   real(rk) :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
-   real(rk) :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
-   real(rk), dimension(:), allocatable  :: Cond,rhoCp,Sint,dzi,zi,Told,Pari
+   !real(rk) :: ice_hi, ice_hs 
+   !real(rk) :: Fh,Ff,Fs 
+   !real(rk) :: swr_0,precip_i,sfall_i 
+   !real(rk) :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
+   !real(rk) :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
+   !real(rk), dimension(:), allocatable  :: Cond,rhoCp,Sint,dzi,zi,Told,Pari,uvic_Tice
 
 
 #if 0
@@ -808,22 +804,26 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
    print *,'ice_uvic_TopGrowth',ice_uvic_TopGrowth
    print *,'ice_uvic_BotGrowth',ice_uvic_BotGrowth
    print *,'ice_uvic_Hmix',ice_uvic_Hmix
-   print *,'ice_uvic_Aice_i',ice_uvic_Aice
-   print *,'ice_uvic_Asnow_i',ice_uvic_Asnow
-   print *,'ice_uvic_Amelt_i',ice_uvic_Amelt
+   print *,'ice_uvic_Aice',ice_uvic_Aice
+   print *,'ice_uvic_Asnow',ice_uvic_Asnow
+   print *,'ice_uvic_Amelt',ice_uvic_Amelt
    print *,'ice_uvic_swr_0',ice_uvic_swr_0
    print *,'ice_uvic_precip_i',ice_uvic_precip_i
    print *,'ice_uvic_sfall_i',ice_uvic_sfall_i
 #endif 
 
 
+   !call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
+   call open_water(nilay,I_0,ice_uvic_Sicebulk,ice_uvic_Hmix,ice_uvic_Tice,depmix,sst,ice_uvic_Fh,heat,precip,ice_uvic_precip_i)
+                     
 
-   call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
-                     !nilay,I_0,Sice_bulk,Hmix,Tice,depmix,TSS,Fh,heat,precip,precip_i)
-
+   !call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
+                  !airt,hum,cloud,I_0,Told,Tice,Pari,&
+                 ! Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                  !latitude,u10,v10,precip,airp,evap,alb)
    call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
-                  airt,hum,cloud,I_0,Told,Tice,Pari,&
-                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                  airt,hum,cloud,I_0,ice_uvic_Told,ice_uvic_Tice,ice_uvic_Pari,&
+                  ice_uvic_Sicebulk,ice_hi,ice_hs,ice_uvic_dzi,ice_uvic_Cond,ice_uvic_rhoCp,ice_uvic_zi,ice_uvic_Sint,&
                   latitude,u10,v10,precip,airp,evap,alb)
 
    
