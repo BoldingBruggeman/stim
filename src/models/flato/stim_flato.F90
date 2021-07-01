@@ -1387,8 +1387,6 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
    integer                   ::  k  
 
 
-   call surfmelt(Tice(1),TopMelt)
-
 end subroutine growthtb
 
 !-----------------------------------------------------------------------
@@ -1469,6 +1467,81 @@ subroutine surfmelt(Ts,TopMelt)
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                 ::   Fdiv,dmsw,dmi,Fdivice,Fdivsnow  
+
+!-----------------------------------------------------------------------
+
+!      LEVEL1'surfmelt'
+
+!
+!...Calculate flux divergence at surface. Note: Iceflux(1) is the downward
+!...positive heat flux defined at the centre of the uppermost layer
+!
+   Fdiv=Iceflux(1)-fluxt
+   !
+   !...If no melt is implied, return; otherwise, calculate surface melt
+   ! still apply constant drainrate for meltponds
+   !
+         if(Fdiv.ge.0.D+00 .or. fluxt.lt.0.D+00 .or. Ts.lt.Tmelts) then
+             if (meltpond) then 
+                meltmass=meltmass-drainrate*dti*Amelt
+               if (meltmass .lt. 0.D+00) then
+                 meltmass= 0.D+00
+                 Amelt=0.D+00
+                 Aice=1-Asnow
+               end if 
+             end if
+           return
+         else
+   !
+   !......use heat to melt available snow, then ice
+           dmsw=-Fdiv*dti/Hfw
+           fluxt=0.D+00
+           snmass=snmass-Asnow*dmsw
+           simass=simass-(Aice+Amelt)*dmsw*Hfw/Hfi 
+   !nsnote again double snow check! rm one?
+             if (meltpond .and. snmass .gt. 0.D+00 .and. snmass/rhosnow .gt. hsmin) then
+             meltmass=meltmass+dmsw*rhosnow/rhowaterfresh-drainrate*dti*Amelt
+                   
+                   if (meltmass .lt. 0.D+00) then
+                       meltmass=0.D+00
+                       Amelt=0.D+00
+                       Aice=1-Asnow
+                   end if  
+             else if (meltpond .and. snmass .lt. 0.D+00) then
+             meltmass=meltmass+dmsw*rhoice/rhowaterfresh-drainrate*dti*Amelt
+                   if (meltmass .lt. 0.D+00) then
+                       meltmass=0.D+00
+                       Amelt=0.D+00
+                       Aice=1-Asnow
+                   end if
+             end if
+   
+           if(snmass.lt.0.D+00) then
+   !
+   !........if all of snow melted, use remaining heat to melt ice
+             if (snow_dist) then
+                hsmax=hsmin
+             end if
+             dmi=-snmass*Hfw/Hfi
+             snmass=0.D+00
+             simass=simass-dmi
+             TopMelt=TopMelt+dmi/rhoice
+             if(simass.lt.0.D+00) then
+   !
+   !..........if all ice is melted, restore remaining surface flux to 
+   !..........be added to mixed layer heat storage
+               TopMelt=TopMelt+simass/rhoice
+               fluxt=-simass*Hfi/dti
+               simass=0.D+00
+             endif
+           endif
+         endif
+   
+   !
+   !    LEVEL1'end surfmelt'
+   
+      return
+
 
 end subroutine surfmelt
 
@@ -1843,6 +1916,135 @@ subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
 ! Feq - equivalent salt flux due to growth/melt sea ice processes [ppt m s-1 kg m-3]
       real(rk)              ::   Fb,Feq
 
+!-----------------------------------------------------------------------
+!BOC
+      ssi=0
+      !get old time step bulk salinity
+      !
+         So=Sice_bulk
+      
+      !...convert rate of mass to thickness
+      !
+         ratei=(simass-simasso)/dti
+         V = ratei/rhoice          !ice thickness change in m
+      
+      !Ice salinity conservation equation terms:
+      !...brine entrapment during ice growth
+      !...get the fractionation coefficient (Cox and Weeks, 1988)
+      !    
+           
+              f=0.12D+00
+         if(higb .gt. 0) then
+           if(V .gt. 3.6e10-7) then
+              f=0.26D+00/(0.26D+00+0.74D+00*exp(-724300D+00*V)) !V in m
+           end if
+         
+           if(V .lt. 3.6e-7 .and. V .gt. 2e-8) then
+              f=0.8925D+00+0.0568D+00*log(100.D+00*V)
+           end if
+      
+      
+           x1=(higb)*(f*SSS-So)/(simass/rhoice)     !NSnote fixed units 
+         else
+           x1=0
+         end if
+      
+      !...brine entrapment during snow ice formation
+      !...calculate if snow ice has been created
+      !
+         if(higs .gt. 0.D+00 .and. simass .gt. 0) then
+           Ssi=(rhoice-rhosnow)*SSS/rhoice
+           x2=(max(0.D+00,higs))*((Ssi-So)/(simass/rhoice)) 
+         else
+           x2=0
+         end if
+      
+      !...gravity drainage term
+         if(Tice(nilay+1) .gt. Tice(2)) then  !only if dT/dz < 0
+            x3=-((So-Sg)/Tg)*dti       !decreases Sice_bulk
+         else
+            x3=0
+         endif
+      
+      !...flushing term
+         if(hims .gt. 0.0D+00) then
+           x4=-((So-Sfl)/Tfl)*dti      !decreases Sice_bulk
+         else
+           x4=0
+         end if
+      
+      !Get time-step ice bulk salinity!
+      !
+         Sice_bulk=So+x1+x2+x3+x4 !NSnote unit inconsistency x1,x2 - fixed
+      !Get time-step salinity profile, which depends on the bulk salinity
+      !
+      !...get the ice salinity linear profile to be used in the cases of
+      !...constrained from 0 ppt at the surface to the bulk salinity (Sice_bulk)
+      !
+         if(simass .gt. 0) then
+           do k=1,nilay+1
+             Szero(k) = Sice_bulk*zi(k)/(simass/rhoice)
+           end do
+         end if
+      
+         
+         
+      !...for a low bulk salinity (Sice_bulk < S1 = 3.5 ppt) >> linear profile
+              if(Sice_bulk .lt. S1) alpha=1.D+00
+      !...for a high bulk salinity (Sice_bulk > S2 = 4.5 ppt) >> const profile
+              if(Sice_bulk .gt. S2) alpha=0.D+00
+      !...for intermediate bulk salinity >> intermediate values between previous cases
+              if(Sice_bulk .gt. S1 .and. Sice_bulk .lt. S2) then
+                 alpha=(Sice_bulk-S2)/(S1-S2)
+              end if
+      
+         do k=1,nilay+1
+            Sice(k) = alpha*Szero(k)+(1.D+00-alpha)*Sice_bulk
+         end do
+      
+      
+      ! Ice-ocean salt flux (Tartinville et al. 2001)
+      ! Terms representing salt rejection of the sea ice and
+      ! salt input to the ocean.
+      !
+      ! Freshwater flux
+      
+      ! Flux due to snow melt
+         if (meltpond.and.Amelt.ne.0.0) then
+          rates=meltmass-meltmasso
+         else  
+          rates=snmass-snmasso
+          rates=rates*(rhosnow/rhof)
+         endif
+      ! to be summed to ppt,evap and river inflow in GOTM
+        Ff =  (-1.D+00)* min(0.D+00,rates)/dti    ![kg m-2 s-1] !sign positive if any freshwater goes into the ocean
+        Ff = Ff/rhow   ![m s-1]
+        rates=0
+      
+      ! Flux due to brine drainage
+      !
+         Fb=simass*(x3+x4)/dti
+         
+      ! Basal accretion
+      !
+        xx2=-rhoice*(SSS-Sice(nilay+1))*max(0.D+00,higb)/dti !Vancoppenole multiplies it by the ice fractionation at the mth categorie,
+      !check how it would work properly using Hibler scheme (check 'g' in the black book)
+      
+      ! Snow ice formation
+      !
+        xx3=-rhoice*(SSS-Ssi)*(max(0.D+00,higs))/dti ![ppt kg m-2 s-1]
+      
+      ! Melt of saline ice
+      !
+        xx4=rhoice*(SSS-Sice_bulk)*(hims+himb+himi)/dti
+      
+        Feq=xx2+xx3+xx4 
+      
+        Fs = (Fb + Feq)/rhow         ! [ppt m s-1] - sign with respect to ice ! neg => S transfer from ice to water
+                                     ! pos => S transfer from water to ice ! need to invert sign in S equation  
+      
+      
+         return      
 
 end subroutine saltice_prof_simple
 
