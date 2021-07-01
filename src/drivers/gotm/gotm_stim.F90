@@ -72,6 +72,8 @@
 !  See log for the ice module
 !
 ! !LOCAL VARIABLES:
+   integer             :: k,rc  
+
    class (type_gotm_settings), pointer :: branch
 !EOP
 !-----------------------------------------------------------------------
@@ -141,9 +143,69 @@
 
    LEVEL2 'done.'
 allocate(Tice(2))
+
+
+   allocate(ice_uvic_Tice(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
+   ice_uvic_Tice=0
+      do k=1,nilay+1
+         ice_uvic_Tice(k)=245.+(Tfreezi-245.)*float(k-1)/float(nilay)
+      enddo
+   allocate(ice_uvic_Cond(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Cond)'
+   ice_uvic_Cond =0
+   allocate(ice_uvic_rhoCp(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_rhoCp)'
+   ice_uvic_rhoCp =0
+   allocate(ice_uvic_Sint(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Sint)'
+   ice_uvic_Sint =0
+   allocate(ice_uvic_dzi(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
+   ice_uvic_dzi =0
+   allocate(ice_uvic_zi(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zi)'
+   ice_uvic_zi =0
+   allocate(ice_uvic_Told(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Told)'
+   ice_uvic_Told =0
+   allocate(ice_uvic_Pari(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Pari)'
+   ice_uvic_Pari =0
+   allocate(ice_uvic_dum(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dum)'
+   allocate(ice_uvic_dzice(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
+      do k=1,nilay
+         ice_uvic_dzice(k)=float(k)
+      enddo
+   allocate(ice_uvic_zice(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zice)'
+      do k=1,nilay+1
+         ice_uvic_zice(k)=float(k)
+      enddo
+
+   ice_uvic_dum =0
+   hsnow=0;hice=0;ice_uvic_hm=0
+   ice_uvic_ts=273.16D+00;ice_uvic_tb=273.16D+00;ice_uvic_Fh=0
+   ice_uvic_swr_0=0;ice_uvic_precip_i=0;ice_uvic_sfall_i=0
+   ice_uvic_parb=0;ice_uvic_parui=0;
+   ice_uvic_Ff=0;ice_uvic_Fs=0
+   ice_uvic_Sicebulk=6.0D+00
+   ice_uvic_topmelt=0;ice_uvic_botmelt=0
+   ice_uvic_termelt=0;ice_uvic_topgrowth=0
+   ice_uvic_botgrowth=0;ice_uvic_Hmix=0 
+   ice_uvic_Aice=0;ice_uvic_Asnow=0 
+   ice_uvic_Amelt=0 
+
+
    return
    end subroutine init_stim_yaml
 !EOC
+
+
+
+
 
 !-----------------------------------------------------------------------
 !BOP
@@ -227,23 +289,24 @@ allocate(Tice(2))
 !BOP
 !
 ! !IROUTINE: do the ice calculations
-!
+
 ! !INTERFACE:
    subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,julianday,secondsofday, &
-                     longitude,latitude,I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0, &
+                     lon,lat,I_0,airt,airp,hum,u10,v10,cloud,rho,rho_0, &
                      back_radiation_method,hum_method,fluxes_method,albedo,heat)
-!
+
+!??? call do_ice(h(nlev),) --> do_stim(dz,) should I use dz of h(nlev) or h(n) 
+
 ! !DESCRIPTION:
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  !REALTYPE, intent(in)    :: dz,dt,Ta,S,precip,Qsw
-   REALTYPE, intent(in)    :: dz,dt,Ta,S,Qsw,longitude,latitude,airt,airp,hum,cloud,sss,rho,rho_0
-   REALTYPE, intent(inout)    :: precip,I_0,u10,v10,sst,albedo,heat
+   REALTYPE, intent(in)    :: dz,dt,S,Qsw,lon,lat,airt,airp,hum,cloud,rho,rho_0     !jp
+   REALTYPE, intent(inout)    :: Ta,precip,I_0,u10,v10,albedo,heat
    integer, intent(in)     :: julianday,secondsofday,back_radiation_method,hum_method,fluxes_method
-   !jp
+  
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE, intent(inout) :: Tw
@@ -262,6 +325,9 @@ allocate(Tice(2))
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Tf
+
+   !jpnote
+   integer                    :: n
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -298,6 +364,7 @@ allocate(Tice(2))
 #endif
 #ifdef STIM_FLATO
       case(4)
+       
          if (S .lt. 0.01) then
             LEVEL0 'The FLato ice model is developed for oceanic conditions.'
             LEVEL0 'Very low salinity is not supported - and the principle'
@@ -310,18 +377,32 @@ allocate(Tice(2))
                call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
             
             else
-               call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
-                                 I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
-                                 hum_method,fluxes_method,albedo,heat)
-        
-                     
+               !n = ubound(S,1)    !already set in gotm.F90 --> nlev ??? -jp
+               !?? use dz or h(n) or h(nlev)
+               call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
+                          I_0,airt,airp,hum,u10,v10,precip,cloud, &
+                          Ta,S,rho,rho_0, &
+                          back_radiation_method,hum_method,fluxes_method,&
+                          ice_hi,ice_hs,ice_uvic_hm,ice_uvic_Tice, &
+                          ice_uvic_Cond,ice_uvic_rhoCp, &
+                          ice_uvic_Sint,ice_uvic_dzi,ice_uvic_zi, &
+                          ice_uvic_Pari,ice_uvic_Told,albedo,heat,&
+                          ice_uvic_Fh,ice_uvic_Ff,ice_uvic_Fs,&
+                          ice_uvic_Sicebulk, ice_uvic_topmelt, &
+                          ice_uvic_botmelt,ice_uvic_termelt, &
+                          ice_uvic_topgrowth,ice_uvic_botgrowth,&
+                          ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_Asnow,&
+                          ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i)
+               !call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
+                                 !I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
+                                 !hum_method,fluxes_method,albedo,heat)
                   
                              !-------- this exists after the call to do_ice_uvic in the old code ??? -jp
                                  !--- run code and add a brakpoint here to see when the code gets to this point 
-                              ice_uvic_ts=ice_uvic_Tice(1)
-                              ice_uvic_tb=ice_uvic_Tice(nilay)
-                              ice_uvic_parb=ice_uvic_Pari(nilay)
-                              ice_uvic_parui=ice_uvic_Pari(nilay+1)
+                     ice_uvic_ts=ice_uvic_Tice(1)
+                     ice_uvic_tb=ice_uvic_Tice(nilay)
+                     ice_uvic_parb=ice_uvic_Pari(nilay)
+                     ice_uvic_parui=ice_uvic_Pari(nilay+1)
         
             end if 
          end if                    

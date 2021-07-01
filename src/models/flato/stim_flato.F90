@@ -78,7 +78,7 @@
    real(rk), pointer :: hi,hs  ! jpnote: keep for flato
 
    !for pointer 
-   real(rk), pointer :: ice_hi, ice_hs 
+   !real(rk), pointer :: ice_hi, ice_hs 
    !real(rk), pointer :: swr_0,precip_i,sfall_i 
    !real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
    !real(rk), pointer :: Fh,Ff,Fs 
@@ -221,7 +221,7 @@ subroutine init_stim_flato(Ta)
 !Flato 
 ! !LOCAL VARIABLES:
 !
-   integer             :: k,rc     !from init_ice_uvic - jp 
+   !integer             :: k,rc     !from init_ice_uvic - jp 
 ! !LOCAL PARAMETERS:
 !EOP
 !-----------------------------------------------------------------------
@@ -248,7 +248,8 @@ subroutine init_stim_flato(Ta)
 
    else
 
-
+   !hs => Hsnow !keep for flato  ???
+   !hi => Hice  !keep for flato 
   
    ! for flato ??? jpnote 
    !--------------
@@ -337,59 +338,61 @@ subroutine init_stim_flato(Ta)
   ! case (3)
       !LEVEL2 'Thermodynamic ice model adapted from Flato&Brown, 1992, UVic'
      ! call init_ice_uvic(namlst)
+#if 0
+   allocate(ice_uvic_Tice(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
+   ice_uvic_Tice=0
+      do k=1,nilay+1
+         ice_uvic_Tice(k)=245.+(Tfreezi-245.)*float(k-1)/float(nilay)
+      enddo
+   allocate(ice_uvic_Cond(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Cond)'
+   ice_uvic_Cond =0
+   allocate(ice_uvic_rhoCp(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_rhoCp)'
+   ice_uvic_rhoCp =0
+   allocate(ice_uvic_Sint(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Sint)'
+   ice_uvic_Sint =0
+   allocate(ice_uvic_dzi(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
+   ice_uvic_dzi =0
+   allocate(ice_uvic_zi(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zi)'
+   ice_uvic_zi =0
+   allocate(ice_uvic_Told(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Told)'
+   ice_uvic_Told =0
+   allocate(ice_uvic_Pari(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Pari)'
+   ice_uvic_Pari =0
+   allocate(ice_uvic_dum(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dum)'
+   allocate(ice_uvic_dzice(nilay),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
+      do k=1,nilay
+         ice_uvic_dzice(k)=float(k)
+      enddo
+   allocate(ice_uvic_zice(nilay+1),stat=rc)
+   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zice)'
+      do k=1,nilay+1
+         ice_uvic_zice(k)=float(k)
+      enddo
 
-      allocate(ice_uvic_Tice(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
-      ice_uvic_Tice=0
-         do k=1,nilay+1
-            ice_uvic_Tice(k)=245.+(Tfreezi-245.)*float(k-1)/float(nilay)
-         enddo
-      allocate(ice_uvic_Cond(nilay),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Cond)'
-      ice_uvic_Cond =0
-      allocate(ice_uvic_rhoCp(nilay),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_rhoCp)'
-      ice_uvic_rhoCp =0
-      allocate(ice_uvic_Sint(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Sint)'
-      ice_uvic_Sint =0
-      allocate(ice_uvic_dzi(nilay),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
-      ice_uvic_dzi =0
-      allocate(ice_uvic_zi(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zi)'
-      ice_uvic_zi =0
-      allocate(ice_uvic_Told(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Told)'
-      ice_uvic_Told =0
-      allocate(ice_uvic_Pari(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Pari)'
-      ice_uvic_Pari =0
-      allocate(ice_uvic_dum(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dum)'
-      allocate(ice_uvic_dzice(nilay),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
-         do k=1,nilay
-            ice_uvic_dzice(k)=float(k)
-         enddo
-      allocate(ice_uvic_zice(nilay+1),stat=rc)
-      if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zice)'
-         do k=1,nilay+1
-            ice_uvic_zice(k)=float(k)
-         enddo
+   ice_uvic_dum =0
+   hsnow=0;hice=0;ice_uvic_hm=0
+   ice_uvic_ts=273.16D+00;ice_uvic_tb=273.16D+00;ice_uvic_Fh=0
+   ice_uvic_swr_0=0;ice_uvic_precip_i=0;ice_uvic_sfall_i=0
+   ice_uvic_parb=0;ice_uvic_parui=0;
+   ice_uvic_Ff=0;ice_uvic_Fs=0
+   ice_uvic_Sicebulk=6.0D+00
+   ice_uvic_topmelt=0;ice_uvic_botmelt=0
+   ice_uvic_termelt=0;ice_uvic_topgrowth=0
+   ice_uvic_botgrowth=0;ice_uvic_Hmix=0 
+   ice_uvic_Aice=0;ice_uvic_Asnow=0 
+   ice_uvic_Amelt=0 
 
-      ice_uvic_dum =0
-      hsnow=0;hice=0;ice_uvic_hm=0
-      ice_uvic_ts=273.16D+00;ice_uvic_tb=273.16D+00;ice_uvic_Fh=0
-      ice_uvic_swr_0=0;ice_uvic_precip_i=0;ice_uvic_sfall_i=0
-      ice_uvic_parb=0;ice_uvic_parui=0;
-      ice_uvic_Ff=0;ice_uvic_Fs=0
-      ice_uvic_Sicebulk=6.0D+00
-      ice_uvic_topmelt=0;ice_uvic_botmelt=0
-      ice_uvic_termelt=0;ice_uvic_topgrowth=0
-      ice_uvic_botgrowth=0;ice_uvic_Hmix=0 
-      ice_uvic_Aice=0;ice_uvic_Asnow=0 
-      ice_uvic_Amelt=0 
+#endif 
 
       !not needed as long as ice_uvic is passed into subroutines called from do_ice_uvic 
       !pointers from flato  --> so I dnot  
@@ -432,14 +435,6 @@ subroutine init_stim_flato(Ta)
 !-----------------------------------------------------------------------
    endif
 !-------------------------------------------------------------------------------
-! from ice.F90 
-   !???
-   !ice_uvic_ts=ice_uvic_Tice(1)
-   !ice_uvic_tb=ice_uvic_Tice(nilay)
-   !ice_uvic_parb=ice_uvic_Pari(nilay)
-   !ice_uvic_parui=ice_uvic_Pari(nilay+1)
-
-!-----------------------------------------------------------------------
 
 #if 0 
    !printing Vars for Testing purposes
@@ -724,31 +719,39 @@ end subroutine do_stim_flato
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
 !
 ! !INTERFACE: 
-subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
-                       I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rhowater,rho_0,back_radiation_method, &
-                       hum_method,fluxes_method,alb,heat)
+!subroutine do_ice_uvic(dt,dz,julianday,secondsofday,longitude,latitude, &
+                      ! I_0,airt,airp,hum,u10,v10,,precip,cloud,sst,sss,rhowater,rho_0,back_radiation_method, &
+                     !  hum_method,fluxes_method,alb,heat)
+subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
+                        I_0,airt,airp,rh,u10,v10,precip,cloud, &
+                        TSS,SSS,rhowater,rho_0, &
+                        back_radiation_method,hum_method,fluxes_method, &
+                        ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
+                        Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
+                        TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i)
 ! !USES:
    implicit none
 !
 ! !INPUT PARAMETERS:
-   real(rk), intent(in)     :: dz !--> h from meanflow
-   !real(rk), intent(in)    :: h  ! sea surface layer thickness --> is this the same as h 
-   real(rk), intent(in)     :: dt ! ocean timestep (sec) ! dto??? 
+   real(rk), intent(in)     :: dto ! ocean timestep (sec) ! dto ??? 
+   !real(rk), intent(in)     :: dz !--> h from meanflow ???
+   real(rk), intent(in)    :: h  ! sea surface layer thickness --> is this the same as dz ???
+   
    integer, intent(in)     :: julianday ! this julian day --> from time
    integer, intent(in)     :: secondsofday ! seconds for this day -->  from time
-   real(rk), intent(in)    :: longitude    ! longitude for this point --> longitude from gotm
-   real(rk), intent(in)    :: latitude  ! latitude for this point --> latitude from gotm 
+   real(rk), intent(in)    :: lon    ! longitude for this point --> longitude from gotm
+   real(rk), intent(in)    :: lat ! latitude for this point --> latitude from gotm 
    real(rk), intent(inout)  :: I_0   ! shortwave radiation at sea surface  
    real(rk), intent(in)     :: airt  ! 2m temperature
    real(rk), intent(in)     :: airp  ! sea surface pressure
-   real(rk), intent(in)     :: hum   ! relative humidity from airsea
-   !real(rk), intent(in)    :: rh    ! relative humidity --> is this the same as hum
+   !real(rk), intent(in)     :: hum   ! relative humidity from airsea
+   real(rk), intent(in)    :: rh    ! relative humidity --> is this the same as hum ??? 
    real(rk), intent(inout)  :: u10   ! 10 m wind u-component
    real(rk), intent(inout)  :: v10   ! 10 m wind v-component
    real(rk), intent(inout)  :: precip! freshwater precipitation (m/s)
    real(rk), intent(in)     :: cloud ! cloud cover
-   real(rk), intent(inout)  :: sst     !SST     ! sea surface temperature
-   real(rk), intent(in)     :: sss     ! sea surface salinity
+   real(rk), intent(inout)  :: TSS     ! sea surface temperature
+   real(rk), intent(in)     :: SSS     ! sea surface salinity
    real(rk), intent(in)      :: rhowater   ! sea surface layer density --> called rho(nlev) in new code
    real(rk), intent(in)      :: rho_0 ! reference density --> from meanflow
    integer, intent(in)       :: back_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
@@ -756,12 +759,49 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
    integer, intent(in)       :: fluxes_method ! method for fluxes
     
    ! !INPUT/OUTPUT PARAMETERS:
+   real(rk), intent(inout)   :: ice_hi    ! ice thickness (m)
+   real(rk), intent(inout)   :: ice_hs    ! snow thickness (m)
+   real(rk), intent(inout)   :: ice_hm    ! meltpond thickness (m)
+   real(rk), intent(inout)   :: Tice(nilay+1)  ! ice layer temperature Tice(nilay +1)(deg-C)
+   real(rk), intent(inout)   :: Cond(nilay)  ! thermal conductivities defined at the 
+                               ! centre of each layer Cond(nilay)(W m-1 K-1)
+   real(rk), intent(inout)   :: rhoCp(nilay) ! volumetric heat capacities defined at 
+                               ! the centre of each layer rhoCp(nilay)(J m-3 K-1)
+   real(rk), intent(inout)   :: Sint(nilay+1) ! internal heat source due to penetrating 
+                                ! short wave radiation Sint(nilay)(W m-3)
+   real(rk), intent(inout)   :: dzi(nilay) !layer thicknesses dzi(nilay)(m)
+   real(rk), intent(inout)   :: zi(nlmax) !layer interface depths zi(nilay+1)(m)
+   real(rk), intent(inout)   :: Told(nilay+1) !ice temperature two time steps 
+                                ! previous to calculation of outgoing 
+                                ! long-wave flux in SEBUDGET Told (nilay+1) (K)
    real(rk), intent(inout)   :: alb   ! surface albedo - water, ice/snow-total
    real(rk), intent(inout)   :: heat  ! surface heat flux
 
+!NSnote, check - maybe adjust units...
+   real(rk), intent(inout)  ::  Sice_bulk   ! bulk ice salinity (ppt)
+   real(rk), intent(inout)  ::  Fh   ! interface heat flux (W/m2)
+   real(rk), intent(out)  ::  Ff   ! interface freshwater flux (m s-1)
+   real(rk), intent(out)  ::  Fs   ! interface salt flux - (ppt m s-1)
+   real(rk), intent(out)   :: Pari(nilay+1) 
+                       !photosynthatically available radiation in ice (W m-2)
+
+! !OUTPUT PARAMETERS:
+   real(rk), intent(out)     :: TopMelt ! top melting - ice mass melted at the surface (snow+ice)  at time step(m)
+   real(rk), intent(out)     :: Botmelt ! bottom melting - ice mass melted at the ice bottom at time step(m) 
+   real(rk), intent(out)     :: TerMelt ! internal melting - ice mass melted in the ice interior at time step (m) 
+   real(rk), intent(out)     :: TopGrowth ! top growth ice mass growth at slab surface due to snow submersion (m)
+   real(rk), intent(out)     :: BotGrowth ! bottom growth - ice mass growth at the ice bottom at time step (m)     
+   real(rk), intent(out)     :: Hmix !  transferred energy - check  (m)
+!   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
+! the SWR which crosses the ice slab and reach the water. keep it for now
+   real(rk), intent(out)     :: Aice_i,Asnow_i,Amelt_i ! ice area fraction which is : open ice, snow and 
+                                                ! meltpond, respectively
+   real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
+
+
 
    ! LOCAL VARIABLES 
-   real(rk)        :: h1,h2  !point to hice and hsnow whose values are taken from stim_variables.F90 
+   !real(rk)        :: h1,h2  !point to hice and hsnow whose values are taken from stim_variables.F90 
 
    real(rk)          :: dmsi ! dmsi - new ice formation at open water [kg m-2]
    integer           :: yy,mm,dd,j,k
@@ -814,7 +854,7 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
 
 
    !call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
-   call open_water(nilay,I_0,ice_uvic_Sicebulk,ice_uvic_Hmix,ice_uvic_Tice,depmix,sst,ice_uvic_Fh,heat,precip,ice_uvic_precip_i)
+   call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,TSS,Fh,heat,precip,precip_i)
                      
 
    !call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
@@ -822,9 +862,9 @@ subroutine do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
                  ! Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
                   !latitude,u10,v10,precip,airp,evap,alb)
    call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
-                  airt,hum,cloud,I_0,ice_uvic_Told,ice_uvic_Tice,ice_uvic_Pari,&
-                  ice_uvic_Sicebulk,ice_hi,ice_hs,ice_uvic_dzi,ice_uvic_Cond,ice_uvic_rhoCp,ice_uvic_zi,ice_uvic_Sint,&
-                  latitude,u10,v10,precip,airp,evap,alb)
+                  airt,rh,cloud,I_0,ice_uvic_Told,ice_uvic_Tice,ice_uvic_Pari,&
+                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                  lat,u10,v10,precip,airp,evap,alb)
 
    
    !call cndiffus()
@@ -1236,34 +1276,9 @@ end subroutine nr_iterate
 !-----------------------------------------------------------------------
 
 ! !INTERFACE:
-subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,precip_i)
-   !open_water(I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
-   
-   !nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
-   !nilay --> yaml
-   !Sice_bulk --> ice_uvic_sicebulk
-   !Hmix --> ice_uvic_Hmix
-   !Tice --> ice_uvic_Tice
-   !hss --> depmix (local var)
-   !tss --> sst
-   !fh- -> ice_uvic_fh
-   !precip_i --> ice_uvic_precip_i
-   !i_0,heat,precip --> outside ice 
+subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
 
-   ! changed the above variables in the code below 
-   ! changed all _ZERO_ to 0 
-
-                                    !.. can I change something so that tss points to sst ? 
-                                    ! initialize a variable TSS 
-                                    ! declare tss as pointer and sst as a target
-                                    ! tss => sst ! then do something like this 
-
-                                    ! or could declare the vars as local variables real(rk) :: tss and then 
-                                    ! do tss = sst
-
-                                    ! or just leave it as is with variables changed 
-
-! !USES:
+! !USES:                 
    IMPLICIT NONE
 ! !INPUT PARAMETERS:
    integer,intent(in)   :: nilay
@@ -1273,13 +1288,11 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,preci
    real(rk), intent(inout) :: Hmix
    real(rk), intent(inout) :: Tice(nilay+1)
    real(rk), intent(inout) :: Fh ! interface heat flux (W/m2)
-   real(rk), intent(inout) :: sst !SST  ! ocean surface temperature (C)   ! sea surface temperature
+   real(rk), intent(inout) :: TSS ! ocean surface temperature (C)   ! sea surface temperature
    real(rk), intent(inout) :: I_0
    real(rk), intent(inout) :: heat
    real(rk), intent(in)    :: precip !H!
    real(rk), intent(out)   :: precip_i !H!
-   
-
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                  ::  Tmix,dmsi
@@ -1304,7 +1317,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,preci
          Sni=6.0D00
    
    !      Tmix=Tfreezi+Hmix/(rCpmix*depmix)
-         Tmix=(SST+kelvin)+ice_uvic_Hmix/(rCpmix*hSS)
+         Tmix=(TSS+kelvin)+ice_uvic_Hmix/(rCpmix*hSS)
    !  Set all 'ice' temperatures to be the mixed layer temperature
    ! (only the surface value has any real meaning in this case, 
    ! since there is actually no ice yet)
@@ -1324,7 +1337,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,preci
             Hmix=0.D+00
             Tmix=Tfreezi 
    !reset TSS here!!!  
-            SST=Tmix-kelvin
+            TSS=Tmix-kelvin
    
    !   New ice salinity
             
@@ -1357,7 +1370,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,sst,Fh,heat,precip,preci
             Sice_bulk=Sni
             I_0=I_0
             heat=heat
-            ice_uvic_Hmix=0
+            Hmix=0
          endif
          precip_i=precip !H!
       
