@@ -860,7 +860,275 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
    real(rk), parameter           :: hzero=1.D-03
 
 
-   call cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+ !-----------------------------------------------------------------------
+
+
+ !      LEVEL1'therm1d'
+
+!
+!...Calculate ice and snow thickness from mass and density
+!...(minimum thickness to avoid dividing by zero elsewhere in code)
+!
+   ice_hs=max(hzero*0.1D+00,snmass/rhosnow)
+   ice_hi=max(hzero,simass/rhoice)
+
+!...snow_dist: max. snow height within a year to get the ratio of current snow
+!    depth to maximum snow depth for the Weibull-distributed snow 
+!      if(snow_dist .and. snmass .eq. 0.D+00) then
+   if(snmass .eq. 0.D+00) then
+      hsmax=hsmin
+!      else if (snow_dist .and. snmass .gt. 0.D+00) then
+   else if (snmass .gt. 0.D+00) then
+      hsmax=max(ice_hs,hsmax)
+   end if
+!...end snow_dist
+!
+!...Calculate array of layer thicknesses from ice and snow thickness
+!...and calculate conductivity and heat capacity arrays. Parameterizations
+!...based on Ebert and Curry (1993)
+!
+!...Total slab thickness
+!
+   hlay=ice_hi+ice_hs
+!
+!...Check if sufficient snow to warrant snow layers
+!
+   if(ice_hs.gt.hsmin) then
+!
+!.......estimate layer thickness (i.e. if evenly-spaced)
+      thicklay=hlay/float(nilay)
+!
+!.......number of snow layers
+!         nslay=max(1,nint(ice_hs/thicklay))
+!         nslay=min(nslay,nilay-1)
+
+!***Temporary fix***
+
+! --- ONLY ONE SNOW LAYER USED
+! --- Do not change this until a conservative method for reapportioning
+! --- temperature when number of snow layers changes is developed
+! --- G. Flato 14/Sept/94
+
+   nslay=1
+
+!***Temporary fix***
+!
+!.......thickness of snow layers
+      snlaythick=ice_hs/float(nslay)
+!
+!.......loop over snow layers
+      do k=1,nslay
+        dzi(k)=snlaythick
+!.........conductivity of snow, including parameterization of water vapor
+!.........diffusion
+        Ticeav=(Tice(k)+Tice(k+1))/2.D+00
+        Cond(k)=(2.845D-06*rhosnow**2)+(2.7D-04*2.D+00**((Ticeav-233.D+00)/5.D+00))
+!....snow_dist
+        if (snow_dist .and. distr_type .eq. 0 .and. ice_hs .ge. hsmax) then
+            Cond(k)=Cond(k)*pi/4.D+00
+        end if
+
+!end snow_dist
+!.........heat capacity of snow 
+        rhoCp(k)=rhosnow*(92.88D+00+7.364D+00*Ticeav)
+      enddo
+!.......reset 'hlay' to be thickness spanned by ice layers
+      hlay=ice_hi
+   else
+!....if not, number of snow layers equals zero
+      nslay=0
+   endif
+!
+!...Now do ice layers
+!
+   do k=nslay+1,nilay
+!.......ice layer thickness
+      dzi(k)=hlay/float(nilay-nslay)
+!.......salinity of ice
+ if (ice_salt) then 
+        Sice_bulk=Sice_bulk 
+      else
+        if(ice_hi.ge.0.57D+00) then
+          Sice_bulk=3.2
+        else
+          Sice_bulk=(14.24D+00-19.39D+00*ice_hi)
+        endif
+      endif
+      Ticeav=min(Tmelti-0.1D+00,(Tice(k)+Tice(k+1))/2.D+00)
+!.......conductivity of ice
+      Cond(k)=Condfi+0.1172D+00*Sice_bulk/(Ticeav-Tmelti)
+!.......minimum value to avoid zero or negative conductivities
+      Cond(k)=max(Cond(k),Condfi/5.D+00)
+!.......heat capacity of ice
+      rhoCp(k)=rhoCpfi+1.715D+07*Sice_bulk/(Ticeav-Tmelti)**2
+!.......limit value to 100 times fresh water value to avoid
+!.......extreme values when temperature nears melting
+      rhoCp(k)=min(rhoCpfi*100.D+00,rhoCp(k))
+   enddo
+!
+!...Calculate internal sources due to penetrating shortwave radiation
+!...Note, internal sources specified at layer interfaces
+!
+   zi(1)=0.D+00
+   zi(2)=zi(1)+dzi(1)/2.D+00
+   zi(3)=zi(2)+dzi(1)/2.D+00+dzi(2)/2.D+00
+   Sint(1)=0.D+00            !internal sources must be zero at
+   Sint(nilay+1)=0.D+00       !top and bottom surfaces
+   Pari(1)=PenSW !Pari at top of snow set to PenSW
+!....if no ice, put all short wave radiation into surface flux
+! NSnote: not sure why this is here, since this routine should not 
+! be called if no ice
+
+   if(hlay.lt.hzero) then
+     fluxt=fluxt+PenSW
+   else
+!....snow_dist
+     if (snow_dist .and. distr_type .eq. 0 .and. ice_hs .ge. hsmax) then 
+! absorption at surface, use PenSW from albedo_ice since Anow=1.0
+        fluxt=fluxt+PenSW*swkappas(Tsav)*(1.D+00-swkappas(Tsav)*ice_hs *erfc(swkappas(Tsav)&
+              *ice_hs/sqrt(pi))*exp((swkappas(Tsav)*ice_hs)**2.D+00/pi))
+        Pari(2)=PenSW*(1-swkappas(Tsav)*ice_hs*erfc(swkappas(Tsav)*ice_hs/sqrt(pi))&
+                *exp((swkappas(Tsav)*ice_hs)**2.D+00/pi))
+     else if(snow_dist .and. distr_type .eq. 0 .and. ice_hs .gt. 0.D+00 &
+             .and. ice_hs .lt. hsmax .and. Asnow.gt.0.D+00) then
+! absortion at surface redone here to accurately account for different surface types
+        fluxt=fluxt+Asnow*I_0*(1.D+00-albsnow)*transs(Tsav)*swkappas(Tsav) & 
+              *(exp(-(inverfc(ice_hs/hsmax))**2.D+00-swkappas(Tsav)*2.D+00 &
+              *hsmax/sqrt(pi)*inverfc(ice_hs/hsmax))&
+              -swkappas(Tsav)*hsmax*erfc(swkappas(Tsav)*hsmax/sqrt(pi) &
+              +inverfc(ice_hs/hsmax))*exp((swkappas(Tsav)*hsmax)**2.D+00/pi)) &
+              +Aice*I_0*(1.D+00-albice)*transi(Tsav)
+
+        Pari(2)=Asnow*I_0*(1.D+00-albsnow)*transs(Tsav) &
+                *(exp(-(inverfc(ice_hs/hsmax))**2.D+00-swkappas(Tsav)*2.D+00 &
+                *hsmax/sqrt(pi)*inverfc(ice_hs/hsmax))&
+                -swkappas(Tsav)*hsmax*erfc(swkappas(Tsav)*hsmax/sqrt(pi) &
+                +inverfc(ice_hs/hsmax))*exp((swkappas(Tsav)*hsmax)**2.D+00/pi)) &
+                +Aice*I_0*(1.D+00-albice)*transi(Tsav)
+     else if(snow_dist .and. distr_type .eq. 1 .and. ice_hs .ge. hsmax) then
+! absorption at surface, use PenSW from albedo_ice since Anow=1.0
+        fluxt=fluxt+PenSW*swkappas(Tsav)*4.D+00/ice_hs**2.D+00*1.D+00 &
+              /(2.D+00/ice_hs+swkappas(Tsav))**2
+        Pari(2)=PenSW*4.D+00/ice_hs**2.D+00*1.D+00/(2.D+00/ice_hs+swkappas(Tsav))**2
+     else if(snow_dist .and. distr_type .eq. 1 .and. ice_hs .gt. 0.D+00 .and. ice_hs .lt. hsmax) then
+! absortion at surface redone, here to accurately account for different surface types
+        fluxt=fluxt+Asnow*I_0*(1.D+00-albsnow)*transs(Tsav)*swkappas(Tsav) &
+              *4.D+00/hsmax**2.D+00*1.D+00/(2.D+00/hsmax+swkappas(Tsav)) &
+              *exp(hsmax/2.D+00*(W(-2.D+00*ice_hs/hsmax*exp(-2.D+00))+2.D+00) &
+              *(2.D+00/hsmax+swkappas(Tsav)))*(hsmax/2.D+00*(-W(-2.D+00*ice_hs/hsmax &
+              *exp(-2.D+00))-2.D+00)+1.D+00/(2.D+00/hsmax+swkappas(Tsav))) &
+              + Aice*I_0*(1.D+00-albice)*transi(Tsav)       
+        Pari(2)=Asnow*I_0*(1.D+00-albsnow)*transs(Tsav) &
+              *4.D+00/hsmax**2.D+00*1.D+00/(2.D+00/hsmax+swkappas(Tsav)) &
+              *exp(hsmax/2.D+00*(W(-2.D+00*ice_hs/hsmax*exp(-2.D+00))+2.D+00) &
+              *(2.D+00/hsmax+swkappas(Tsav)))*(hsmax/2.D+00*(-W(-2.D+00*ice_hs/hsmax &
+              *exp(-2.D+00))-2.D+00)+1.D+00/(2.D+00/hsmax+swkappas(Tsav))) &
+              + Aice*I_0*(1.D+00-albice)*transi(Tsav)
+     else if (.not. snow_dist .and. ice_hs .gt. 1.D-02) then
+        fluxt=fluxt+PenSW*swkappas(Tsav)*(exp(-swkappas(Tsav)*zi(1)) &
+              -exp(-swkappas(Tsav)*zi(2)))
+        Pari(2)=PenSW*exp(-swkappas(Tsav)*ice_hs)
+     else
+        fluxt=fluxt+PenSW*swkappai(Tsav)*(exp(-swkappai(Tsav)*zi(1)) &
+              -exp(-swkappai(Tsav)*zi(2)))
+        Pari(2)=PenSW*exp(-swkappai(Tsav)*zi(2))
+     end if
+    
+     if (meltpond) then
+       !note for ice_hs ge hsmax Asnow is 1.0 and Amelt is 0.0, so no doublecounting
+        fluxt=fluxt+Amelt*I_0*(1.D+00-albmelt)*transm
+       Pari(2)=Pari(2)+Amelt*I_0*(1.D+00-albmelt)*transm
+     end if
+
+!......put short wave radiation absorbed in upper half of top layer
+!......into surface warming
+       Sint(2)=Pari(1)*swkappai(Tice(2))*(exp(-swkappai(Tice(2))*zi(2))- &
+               exp(-swkappai(Tice(2))*zi(3)))/(0.5D+00*(dzi(1)+dzi(2)))
+
+!......do ice layers 
+    do k=3,nilay-1
+       zi(k+1)=zi(k)+dzi(k-1)/2.D+00+dzi(k)/2.D+00
+       
+       Pari(k)=Pari(k-1)*exp(-swkappai(Tice(k))*dzi(k-1))
+       Sint(k)=Pari(1)*swkappai(Tice(k))*(exp(-swkappai(Tice(k))*zi(k))- &
+               exp(-swkappai(Tice(k))*zi(k+1)))/(0.5D+00*(dzi(k-1)+dzi(k)))
+     enddo
+     
+     zi(nilay+1)=zi(nilay)+dzi(nilay-1)/2.D+00+dzi(nilay)
+!        zi(nilay+1)=zi(nilay)+dzi(nilay-1)/2.D+00+dzi(nilay)/2.D+00 !NScheck
+!......all of short wave radiation absorbed in bottom-most layer
+!......applied at interface between bottom two layers for simplicity
+     Pari(nilay)=Pari(nilay-1)*exp(-swkappai(Tice(nilay))*dzi(nilay-1))
+     Sint(nilay)=Pari(1)*swkappai(Tice(k))*(exp(-swkappai(Tice(k))*zi(nilay)) &
+                -exp(-swkappai(Tice(k))*zi(nilay+1)))/(0.5D+00*dzi(nilay-1)+dzi(nilay))
+     Pari(nilay+1)=Pari(nilay)*exp(-swkappai(Tice(nilay+1))*dzi(nilay)) !NScheck
+   endif
+!...end snow_dist
+
+
+!     
+!...Set up boundary conditions for 1-D heat conduction equation
+!
+!....if upper surface is melting, use temp. boundary condition
+   if(fluxt.ge.0.D+00.and.Tice(1).ge.Tmelts) then
+     bctype(1)=-1.D+00       !indicates temp. boundary condition
+     bcs(1)=Tmelts           !Note, under melting conditions, surface
+!                                temperature is taken to be melting point
+!                                of snow (fresh water)
+   else
+!
+!....if upper surface is cooling, use flux boundary condition
+     bctype(1)=1.D+00        !indicates flux boundary condition
+     bcs(1)=fluxt            !Note, under cooling conditions, fluxt is
+!                                the outgoing flux calculated in SEBUDGET
+   endif
+!
+!....bottom boundary condition always freezing temp. of sea water
+   bctype(2)=-1.D+00      !indicates lower boundary has temp specified
+   bcs(2)=Tfreezi
+
+!
+!...Solve 1-D heat conduction equation to get new temperature profile
+!...and conductive flux at top and bottom
+!     
+   if(hlay.ge.hlaymin) then
+      call cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+
+!...Check if layer is thinner than HLAYMIN but greater than 0. If so,
+!...assume linear temperature profile and calculate conduction from
+!...constant conductivity rather than solving transient diffusion
+!...equation. If ice and snow have vanished, calculate ocean surface
+!...temperature assuming specified mixed-layer depth.
+!
+   elseif(hlay.lt.hlaymin .and. hlay.gt.0.D+00)then
+!.......thin layer of ice: assume linear temp. profile and calculate
+!.......new surface temperature
+      Tbot=Tfreezi
+      Ttop=(hlay/Condfi)*fluxt+Tbot
+      if(Ttop.gt.Tmelts) then
+         Ttop=Tmelts
+         do k=1,nilay
+            Tice(k)=Ttop
+         enddo
+         Tice(nilay+1)=Tbot
+         Iceflux(1)=0.D+00
+         Iceflux(2)=0.D+00
+      else
+         do k=1,nilay+1
+            Tice(k)=Ttop+(Tbot-Ttop)*float(k-1)/float(nilay)
+         enddo
+         Iceflux(1)=fluxt
+         Iceflux(2)=fluxt
+      endif
+   endif
+!
+!
+!    LEVEL1'end therm1d'
+
+return
+
+
+
 
 end subroutine therm1d
 
@@ -1541,8 +1809,6 @@ subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss) !??? renamed 
       
          return
 
-
-
 end subroutine albedo_ice_uvic
 
 
@@ -1758,6 +2024,37 @@ real function W(y)
 end function W
 !EOF
 !----------------------------------------------------------------------
+
+!BOF
+! !IROUTINE: snow extinction
+!
+! !INTERFACE:
+
+real function swkappas(Tin)
+!DESCRIPTION:
+
+!USES:
+             IMPLICIT NONE
+!INPUT PARAMETERS:
+             real(rk), intent(in) :: Tin
+! !REVISION HISTORY:
+!  Original author(s): 
+!
+!  See log for the icemodel module
+!            
+!-----------------------------------------------------------------------
+!BOC
+             swkappas=((swkappasm+swkappasf)+(swkappasm-swkappasf)* &
+                     tanh(Tin-273.15D+00))/2.D+00
+
+!test
+!             swkappas=1.5               
+ 
+end function swkappas
+!EOF
+!----------------------------------------------------------------------
+
+
 
 real function swkappai(Tin)
 !DESCRIPTION:
