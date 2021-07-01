@@ -63,8 +63,6 @@
 !FLATO 
    public                              :: do_ice_uvic !jp added 
 !
-
-
 ! !PRIVATE DATA MEMBERS:
 !WINTON 
    real(rk), pointer :: Ts,T1,T2
@@ -1053,6 +1051,42 @@ subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
 ! !REVISION HISTORY:
 
       ! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!      LEVEL1'sebudget'
+
+
+!...Calculate ice and snow thickness from mass and density
+      ice_hs=snmass/rhosnow
+      ice_hi=simass/rhoice
+!
+!...Calculate surface fluxes from meteorological data using bulk formulae
+!     Recalculate surface fluxes for sea ice conditions
+! NSnote  TTss is in Kelvin!!!
+      call humidity(hum_method,rh,airp,TTss-kelvin,airt)
+      call longwave_radiation(back_radiation_method, &
+                          lat,TTss,airt+kelvin,cloud,qb)
+      call airsea_fluxes(fluxes_method,.false.,.false., &
+                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
+
+! evap is set to zero for now....as for ice_winton, not sure what it is...
+      evap = 0
+
+!...Calculate energy flux into surface
+!
+!.... long wave flux
+      fluxt=qb
+!
+!....sensible heat flux
+      fluxt=fluxt+qe
+!
+!....latent heat flux
+      fluxt=fluxt+qh
+!
+!
+!    LEVEL1'end sebudget'
+
+   return
 
 end subroutine sebudget
 
