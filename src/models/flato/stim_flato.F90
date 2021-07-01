@@ -1301,9 +1301,56 @@ subroutine trisol(C,R,n,Tice)
    real(rk)                  :: temp(nmax)
    integer                   :: j  
 
-!integer :: n
-   !n = nilay+1  ??? jpnote 
-   !print *,'trisol n', n 
+   !-----------------------------------------------------------------------
+
+!      LEVEL1'trisol'
+
+!...dimension arrays
+!
+!       dimension Tice(nilay+1),C(nmax,3),R(nmax),temp(nmax)
+!
+!...check that 'n' is not greater than nmax
+!
+   if(n.gt.nmax) then
+      print*,'!!!! FATAL ERROR IN TRISOL - N > NMAX'
+      stop
+   endif
+!
+!...check that first diagonal element is not too small
+!
+   if(C(1,2).lt.eps) then
+      print*,'!!!! FATAL ERROR IN TRISOL '
+      print*,'        - FIRST DIAGONAL ELEMENT < EPS'
+      stop
+   endif
+!
+!..."decomposition" phase of solution
+!
+   D1=C(1,2)
+   Tice(1)=R(1)/D1
+   do j=2,n
+      temp(j)=C(j-1,3)/D1
+      D1=C(j,2)-C(j,1)*temp(j)
+      if(D1.lt.eps) then
+         print*,'!!!! FATAL ERROR IN TRISOL '
+         print*,'        - DIVISOR, D1 < EPS'
+         print*,'        - Try making hlaymin larger'
+         stop
+      endif
+      Tice(j)=(R(j)-C(j,1)*Tice(j-1))/D1
+   enddo           
+!
+!..."back-substitution" phase of solution
+!
+   do j=n-1,1,-1
+      Tice(j)=Tice(j)-temp(j+1)*Tice(j+1)
+   enddo
+!
+!
+!    LEVEL1'end trisol'
+
+return
+
 
 end subroutine trisol
 !-----------------------------------------------------------------------
