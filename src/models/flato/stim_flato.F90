@@ -1161,7 +1161,121 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
    integer                   ::      j,l
 
 
+ !-----------------------------------------------------------------------
+
+!      LEVEL1'cndiffus'
+!
+!...check if nilay is greater than maximum allowed
+!
+   if(nilay.gt.nlmax) then
+      print*,'!!!! FATAL ERROR IN CNDIFFUS - NILAY > NLMAX'
+      stop
+   endif
+!
+!...check if nilay is less than minimum allowed
+   if(nilay.lt.2) then
+      print*,'!!!! FATAL ERROR IN CNDIFFUS - NILAY < 2'
+      stop
+   endif
+!
+!...calculate average volumetric heat capacity at temperature grid points
+!...from layer values
+!
+   do j=1,nilay-1
+      rCpav(j+1)=(rhoCp(j)*dzi(j)+rhoCp(j+1)*dzi(j+1))/(dzi(j)+dzi(j+1))
+   enddo
+   rCpav(1)=rhoCp(1)
+   rCpav(nilay+1)=rhoCp(nilay)
+!
+!...set up tridiagonal matrix coefficients for Crank-Nicholson scheme
+!
+   do l=2,nilay
+      C(l,1)=-theta*(2.D+00*Cond(l-1)*dti/dzi(l-1))/(dzi(l)+dzi(l-1))/  &
+            rCpav(l)
+      C(l,2)=1.D+00+(theta*2.D+00*Cond(l-1)*dti/dzi(l-1)+theta*2.D+00*  &
+            Cond(l)*dti/dzi(l))/(dzi(l)+dzi(l-1))/rCpav(l)
+      C(l,3)=-theta*(2.D+00*Cond(l)*dti/dzi(l))/(dzi(l)+dzi(l-1))/      &
+            rCpav(l)
+   enddo
+!
+!...set up right hand side vector
+!
+   do l=2,nilay
+      R(l)=(1.D+00-theta)*(((2.D+00*Cond(l)*dti/dzi(l))/(dzi(l)+ &
+          dzi(l-1)))*(Tice(l+1)-Tice(l))-((2.D+00*Cond(l-1)*dti/dzi(l-1))/ &
+          (dzi(l)+dzi(l-1)))*(Tice(l)-Tice(l-1)))/rCpav(l)+Tice(l)
+!......add internal heat sources (if any)
+      R(l)=R(l)+Sint(l)*dti/rCpav(l)
+   enddo
+!
+!...add temperature boundary conditions (if any) to RHS 
+!
+!.....upper boundary
+   if(bctype(1).lt.0.D+00) then
+      C(1,1)=0.D+00
+      C(1,2)=1.D+00
+      C(1,3)=0.D+00
+      R(1)=bcs(1)
+   endif
+!.....lower boundary
+   if(bctype(2).lt.0.D+00) then
+      C(nilay+1,1)=0.D+00
+      C(nilay+1,2)=1.D+00
+      C(nilay+1,3)=0.D+00
+      R(nilay+1)=bcs(2)
+   endif
+!
+!...add flux boundary conditions (if any) to RHS
+!
+!.....upper boundary
+   if(bctype(1).gt.0.D+00) then
+      C(1,1)=0.D+00
+      C(1,2)=1.D+00+(2.D+00*dti*Cond(1)*theta/dzi(1)**2)/rCpav(1)
+      C(1,3)=-(2.D+00*dti*Cond(1)*theta/dzi(1)**2)/rCpav(1)
+      R(1)=Tice(1)+(Tice(2)-Tice(1))*(2.D+00*dti*Cond(1)*(1.D+00-theta)/ &
+          dzi(1)**2)/rCpav(1)+2.D+00*bcs(1)*dti/rCpav(1)/dzi(1)
+   endif
+!.....lower boundary
+   if(bctype(2).gt.0.D+00) then
+      C(nilay+1,1)=-(2.D+00*dti*Cond(nilay)*theta/dzi(nilay)**2)/ &
+                 rCpav(nilay+1)
+      C(nilay+1,2)=1.D+00+(2.D+00*dti*Cond(nilay)*theta/dzi(nilay)**2)/ &
+                 rCpav(nilay+1)
+      C(nilay+1,3)=0.D+00
+      R(nilay+1)=Tice(nilay+1)-((Tice(nilay+1)-Tice(nilay))*2.D+00*dti*Cond(nilay)* &
+               (1.D+00-theta)/dzi(nilay)**2)/rCpav(nilay+1)-(2.D+00*   &
+               bcs(2)*dti/rCpav(nilay+1)/dzi(nilay))
+   endif
+!
+!...save temperatures from previous time step for use in flux
+!...calculation later
+!
+   do l=1,nilay+1
+      To(l)=Tice(l)
+   enddo
+!
+!...solve system of equations using efficient tridiagonal
+!...matrix solver. Subroutine returns new values of temperature
+!...in array 'Tice' - overwriting previous values.
+!
    call trisol(C,R,nilay+1,Tice)
+!
+!...calculate fluxes at boundaries where temperature boundary 
+!...conditions were specified. Flux returned in array 'flux' -
+!...overwriting previous value.
+!
+!.....upper boundary
+   Iceflux(1)=-Cond(1)*((1.D+00-theta)*(To(2)-To(1))+theta* &
+           (Tice(2)-Tice(1)))/dzi(1)
+!.....lower boundary
+   Iceflux(2)=-Cond(nilay)*((1.D+00-theta)*(To(nilay+1)-To(nilay)) &
+          +theta*(Tice(nilay+1)-Tice(nilay)))/dzi(nilay)
+!
+
+!
+!    LEVEL1'end cndiffus'
+
+return
 
 end subroutine cndiffus
 
