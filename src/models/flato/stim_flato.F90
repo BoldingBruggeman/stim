@@ -65,7 +65,7 @@
 !
 ! !PRIVATE DATA MEMBERS:
 !WINTON 
-   real(rk), pointer :: Ts,T1,T2
+   real(rk), pointer :: Ts,T1,T2  !jpnote uncomment for winton
    !real(rk), pointer :: hi,hs,dh1,dh2 !jpnote: commented orig
    real(rk), pointer :: dh1,dh2
    real(rk), pointer :: trn
@@ -75,7 +75,7 @@
 !Flato 
    real(rk), pointer :: hi,hs  ! jpnote: keep for flato
 
-   !for pointer 
+   !for pointer --- irrelevant --- for now jpnote
    !real(rk), pointer :: ice_hi, ice_hs 
    !real(rk), pointer :: swr_0,precip_i,sfall_i 
    !real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
@@ -85,9 +85,10 @@
    !real(rk), pointer :: uvic_Tice
    !parb,parui
    !Tice => ice_uvic_Tice
-  
 
+!
 !FLATO
+!
 ! LOCAL VARIABLES: 
 !   rhosnow     - snow density (kg m-3)
    real(rk), public :: rhosnow
@@ -137,8 +138,8 @@
    real(rk) :: simasso
 !   snmasso      - ice mass per unit area at previous timestep (kg m-2) !snow mass? 
    real(rk) :: snmasso
-!   Ts           - upper surface temperature (K) ! jpnote 
-   !real(rk) :: Ts
+!   Ts           - upper surface temperature (K) ! jpnote - already declared for use in winton
+   real(rk) :: Ts_uvic
 !   Tsav         - average snow layer temperature (K)
    real(rk) :: Tsav  
    
@@ -242,21 +243,9 @@ subroutine init_stim_flato(Ta)
    bmelt => bottom_ice_energy
    fb => ocean_ice_flux
 
-   
-
    else
 
-   !hs => Hsnow !keep for flato  ???
-   !hi => Hice  !keep for flato 
-  
-   ! for flato ??? jpnote 
-   !--------------
-   !ts => Tice(1)                     !ice_uvic_ts=ice_uvic_Tice(1)
-   !tb => Tice(nilay)                 !ice_uvic_tb=ice_uvic_Tice(nilay)
-   !ice_uvic_parb => Pari(nilay)      !ice_uvic_parb=ice_uvic_Pari(nilay)
-   !ice_uvic_parui => Pari(nilay+1)   !ice_uvic_parui=ice_uvic_Pari(nilay+1)
-   !-------------
-!
+
 !  FLATO 
 !
 !-------------------------------------------------------------------------------------
@@ -336,6 +325,7 @@ subroutine init_stim_flato(Ta)
   ! case (3)
       !LEVEL2 'Thermodynamic ice model adapted from Flato&Brown, 1992, UVic'
      ! call init_ice_uvic(namlst)
+   !-------------------------------------------------------------------------
 #if 0
    allocate(ice_uvic_Tice(nilay+1),stat=rc)
    if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
@@ -392,44 +382,7 @@ subroutine init_stim_flato(Ta)
 
 #endif 
 
-      !not needed as long as ice_uvic is passed into subroutines called from do_ice_uvic 
-      !pointers from flato  --> so I dnot  
-      
-      !ice_hi => Hsnow
-      !ice_hs => Hice
-      !swr_0 => ice_uvic_swr_0
-      !precip_i => ice_uvic_precip_i
-      !sfall_i => ice_uvic_sfall_i
-      !parb,parui
-      !TopMelt => ice_uvic_topmelt
-      !Botmelt => ice_uvic_botmelt 
-      !TerMelt => ice_uvic_termelt 
-      !TopGrowth => ice_uvic_topgrowth
-      !BotGrowth => ice_uvic_botgrowth
-      !Fh => ice_uvic_Fh
-      !Ff => ice_uvic_Ff
-      !Fs => ice_uvic_Fs
-      !Sice_bulk => ice_uvic_Sicebulk
-      !Hmix => ice_uvic_Hmix
-      !Aice_i => ice_uvic_Aice
-      !Asnow_i => ice_uvic_Asnow
-      !Amelt_i => ice_uvic_Amelt
-      !ice_hm =>  ice_uvic_hm
-      
-      !uvic_Tice => ice_uvic_Tice(nilay+1) !test
-      !Tice => ice_uvic_Tice(nilay+1)
-      !Cond => ice_uvic_Cond(nilay)
-      !rhoCp => ice_uvic_rhoCp(nilay)
-      !Sint => ice_uvic_Sint(nilay+1) 
-      !dzi => ice_uvic_dzi(nilay) 
-     ! zi => ice_uvic_zi(nlmax)
-      !Told => ice_uvic_Told(nilay+1)
-      !Pari => ice_uvic_Pari(nilay+1)
-
-   !!case default
-!end select
-
-
+  
 !-----------------------------------------------------------------------
    endif
 !-------------------------------------------------------------------------------
@@ -484,7 +437,7 @@ subroutine init_stim_flato(Ta)
    print *, 'snmass',  snmass
    print *, 'simasso', simasso
    print *, 'snmasso', snmasso
-   print *, 'Ts',  Ts
+   print *, 'Ts_uvic',  Ts_uvic
    print *, 'Tsav', Tsav
    print *, 'ice_salt', ice_salt
    print *, 'sfall', sfall
@@ -703,23 +656,17 @@ hs = 0._rk
 end subroutine do_stim_flato
 
 
-
-
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 !  !BEGINNING OF FLATO SPECIFIC 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-
 !BOP 
 !
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
 !
 ! !INTERFACE: 
-!subroutine do_ice_uvic(dt,dz,julianday,secondsofday,longitude,latitude, &
-                      ! I_0,airt,airp,hum,u10,v10,,precip,cloud,sst,sss,rhowater,rho_0,back_radiation_method, &
-                     !  hum_method,fluxes_method,alb,heat)
 subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                         I_0,airt,airp,rh,u10,v10,precip,cloud, &
                         TSS,SSS,rhowater,rho_0, &
@@ -797,7 +744,6 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
 
 
-
    ! LOCAL VARIABLES 
    !real(rk)        :: h1,h2  !point to hice and hsnow whose values are taken from stim_variables.F90 
 
@@ -808,17 +754,6 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: ohflux !heat flux from ocean into ice underside (W m-2)
 !NSnote, not sure what evap is for
-
-
-   !for fh .. as pointers 
-   !declare as local 
-   !real(rk) :: ice_hi, ice_hs 
-   !real(rk) :: Fh,Ff,Fs 
-   !real(rk) :: swr_0,precip_i,sfall_i 
-   !real(rk) :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
-   !real(rk) :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
-   !real(rk), dimension(:), allocatable  :: Cond,rhoCp,Sint,dzi,zi,Told,Pari,uvic_Tice
-
 
 #if 0
    print *,'Hice',Hice
@@ -1216,7 +1151,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
                call sebudget(hum_method,back_radiation_method,fluxes_method,&
                              Ts,airt,rh,cloud,ice_hi,ice_hs,&
                              lat,u10,v10,precip,airp,evap)
-               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
       !
       !
       !......restore intial temperature profile as therm1d takes a forward time step
@@ -1247,7 +1182,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
                call sebudget(hum_method,back_radiation_method,fluxes_method,&
                              Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                              lat,u10,v10,precip,airp,evap)
-               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp) !??? reanmed -jp
       !
                do l=1,nilay+1
                   Tice(l)=Told(l)
@@ -1259,7 +1194,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
                call sebudget(hum_method,back_radiation_method,fluxes_method,&
                              Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                              lat,u10,v10,precip,airp,evap)
-               call  albedo_ice(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)  !??? renamed -jp
       !
                do l=1,nilay+1
                   Tice(l)=Told(l)
@@ -1485,7 +1420,7 @@ end subroutine saltice_prof_simple
 !-----------------------------------------------------------------------
 
 ! call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
-subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
+subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss) !??? renamed from albedo_ice to albedo_ice_uvic to avoid conflict with winton variable 
 ! !USES:
 
       IMPLICIT NONE
@@ -1501,6 +1436,112 @@ subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
 ! snow_dist
       real(rk)                  :: I_0_tmp
 !
+!snow_dist
+!
+!EOP
+!-----------------------------------------------------------------------------
+!BOP
+!-----------------------------------------------------------------------------
+!  LEVEL1 'albedo_ice'
+
+!...snow_dist
+      if (ice_hs .ge. hsmax.and.ice_hs.ne.0.D+00) then
+      !nsnote isn't hsmax always gt 0.0 ?
+               Asnow=1.D+00
+               Aice=0.D+00
+               Amelt=0.D+00
+               meltmass=0.D+00
+            else if (ice_hs .lt. hsmin .and. ice_hi .ge. hsmin) then
+                  if (meltpond .and. meltmass .gt. 0.D+00) then
+                     Amelt=Ameltmax
+                     Aice=1.D+00-Amelt
+                  else
+                     Amelt=0.D+00
+                     Aice=1.D+00
+                  end if
+               Asnow=0.D+00
+            else if (ice_hi .lt. hsmin) then
+               Aice=0.D+00
+               Asnow=0.D+00
+               Amelt=1.D+00
+               meltmass=0.D+00
+            else  
+               if(snow_dist .and. distr_type .eq. 0) then
+                     Asnow=exp(-1.D+00*(inverfc(ice_hs/hsmax)**2))
+                  else if(snow_dist .and. distr_type .eq. 1) then
+                     Asnow=exp(W(-2.D+00*ice_hs/hsmax*exp(-2.D+00))+2.D+00) &
+                           *(-W(-2.D+00*ice_hs/hsmax*exp(-2.D+00))-2.D+00+1.D+00)
+                  else!Nfix
+                     Asnow=1.D+00 !Nfix
+                  end if
+                  if (meltpond .and. meltmass .gt. 0.D+00) then
+                  if(snow_dist) then
+                     Amelt=min(Ameltmax,1.D+00-Asnow)
+                     Aice=1.D+00-Asnow-Amelt
+                  else
+                     Amelt=Ameltmax !uniform snow with meltponds
+                     Asnow=1.0D+00-Amelt !uniform snow
+                     Aice=0.0D+00 !Nfix
+                  end if
+                  else
+                     Aice=1.D+00-Asnow
+                     Amelt=0.D+00
+                  end if
+            endif
+      !H!begin
+      !  ice and snow albedo
+         if (albice_method.eq.1) then
+            albice=albice_f
+            albsnow=albsnow_f
+         else if (albice_method.eq.2) then
+            albice=(0.44D+00*ice_hi**0.28D+00)+0.08D+00
+            albice=max(albice,albmelt)
+            albsnow=albsnow_f
+         else if (albice_method.eq.3) then
+            if (airtk.lt.273.05) then
+            albice=max(albmelt,(0.44D+00*ice_hi**0.28D+00)+0.08D+00)
+            else
+            albice=min(albice_m,(0.075D+00*ice_hi**2.D+00)+albmelt)
+            end if
+            if (airtk.lt.273.15) then
+            albsnow=albsnow_f
+            else
+            albsnow=albsnow_m
+            end if
+         else if (albice_method.eq.4) then
+            albice=((albice_m+albice_f)+(albice_m-albice_f)*tanh(TTss-273.15D+00))/2.D+00
+            albsnow=((albsnow_m+albsnow_f)+(albsnow_m-albsnow_f)*tanh(TTss-273.15D+00))/2.D+00
+         end if
+      !H!end
+      !...Calculate penetrating SW flux
+      !
+      !
+      
+      
+            PenSW=Asnow*I_0*(1.D+00-albsnow)*transs(TTss)+ &
+                  Aice*I_0*(1.D+00-albice)*transi(TTss)+ &
+                  Amelt*I_0*(1.D+00-albmelt)*transm   
+      
+      
+      !   Calculate short wave flux absorbed at the surface
+      
+      
+            I_0_tmp=Asnow*I_0*(1.D+00-albsnow)*(1.D+00-transs(TTss))+ &
+                  Aice*I_0*(1.D+00-albice)*(1.D+00-transi(TTss))+ &
+                  Amelt*I_0*(1.D+00-albmelt)*(1.D+00-transm)
+      
+      
+      !....Add short wave flux absorbed at surface to total flux
+               fluxt=fluxt+I_0_tmp
+      
+               alb=Asnow*albsnow+Aice*albice+Amelt*albmelt
+      !
+      !...end snow_dist
+      !
+      
+         return
+
+
 
 end subroutine albedo_ice_uvic
 
