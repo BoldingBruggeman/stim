@@ -308,18 +308,24 @@ allocate(Tice(2))
          else
             if (runwintonflato .eq. 1) then 
                call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
-            end if 
-         
+            
+            else
                call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
-                              I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
-                              hum_method,fluxes_method,albedo,heat)
-
+                                 I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
+                                 hum_method,fluxes_method,albedo,heat)
+        
+                     
+                  
                              !-------- this exists after the call to do_ice_uvic in the old code ??? -jp
-                             ! ice_uvic_ts=ice_uvic_Tice(1)
-                             ! ice_uvic_tb=ice_uvic_Tice(nilay)
-                             ! ice_uvic_parb=ice_uvic_Pari(nilay)
-                             ! ice_uvic_parui=ice_uvic_Pari(nilay+1)
-         end if                    !---------
+                                 !--- run code and add a brakpoint here to see when the code gets to this point 
+                              ice_uvic_ts=ice_uvic_Tice(1)
+                              ice_uvic_tb=ice_uvic_Tice(nilay)
+                              ice_uvic_parb=ice_uvic_Pari(nilay)
+                              ice_uvic_parui=ice_uvic_Pari(nilay+1)
+        
+            end if 
+         end if                    
+
    
 #endif
       case default
