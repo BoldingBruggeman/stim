@@ -1784,7 +1784,8 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    integer                   ::    nrit,ksearch,kb,l
    real(rk),parameter        ::    toler=1.D-02 
 
-#if 0
+      
+!-----------------------------------------------------------------------
 
 !      LEVEL1'nr_iterate'
 !
@@ -1794,109 +1795,269 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    do l=1,nilay+1
       Told(l)=Tice(l)
    enddo
-   
+!
 !...First guess at surface temperature
 !
    Ts=Tice(1)
 
+ 
+!
 !-----------------------------------------------------------------------------
 !--- Start initial Newton-Raphson iteration - do a maximum of 5 iterations ---
 !-----------------------------------------------------------------------------
-   
+!
    do nrit=1,5
-      !      
-      !......calculate surface energy budget terms
-               call sebudget(hum_method,back_radiation_method,fluxes_method,&
-                             Ts,airt,rh,cloud,ice_hi,ice_hs,&
-                             lat,u10,v10,precip,airp,evap)
-               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
-      !
-      !
-      !......restore intial temperature profile as therm1d takes a forward time step
-               do l=1,nilay+1
-                  Tice(l)=Told(l)
-               enddo
-      !
-      !......solve unsteady heat conduction equation to get new temperature profile 
-      !......and bottom flux after one time step
-               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,&
-                     rhoCp,zi,Sint,Pari,Tice,I_0)
-      !
-      !......now find mismatch in assumed and computed surface temperature
-               fTs=Ts-Tice(1)
-      !
-      !......stop iterating if mismatch is less than tolerance
-               if(abs(fTs).lt.toler) then
-      !           print*,'Newton-Raphson scheme met tolerance after', &
-      !                          nrit-1,'iterations'
-                 go to 987
-               endif
-      !
-      !......re-do above calculations with slightly increased and decreased
-      !......initial temperature to calculate first derivative by centred
-      !......finite difference
-               dTemp=0.1
-               Tsp=Ts+dTemp
-               call sebudget(hum_method,back_radiation_method,fluxes_method,&
-                             Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-                             lat,u10,v10,precip,airp,evap)
-               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp) !??? reanmed -jp
-      !
-               do l=1,nilay+1
-                  Tice(l)=Told(l)
-               enddo
-               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
-                  Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
-               fTsdT1=Tsp-Tice(1)
-               Tsp=Ts-dTemp
-               call sebudget(hum_method,back_radiation_method,fluxes_method,&
-                             Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-                             lat,u10,v10,precip,airp,evap)
-               call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)  !??? renamed -jp
-      !
-               do l=1,nilay+1
-                  Tice(l)=Told(l)
-               enddo
-               call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
-                Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
-               fTsdT2=Tsp-Tice(1)
-      !
-      !......if derivative vanishes, take solution obtained at this point
-      !......and don't iterate any further
-               if(abs(fTsdT1-fTsdT2).lt.1.D-02) then
-                 print*,'fTsdT1~=fTsdT2 after ',nrit-1,' iterations'
-                 go to 987
-               endif
-      !
-      !......otherwise, compute derivative and hence next guess from
-      !......Newton-Raphson formula
-               fprime=(fTsdT1-fTsdT2)/(2.D+00*dTemp)
-               Tsnew=Ts-fTs/fprime
-      !
-      !......check error and stop iterating if tolerance is met
-               Error=Tsnew-Ts
-               if(abs(Tsnew-Ts).lt.toler) then
-      !           print*,'Newton-Raphson scheme met tolerance after', &
-      !                          nrit,'iterations'
-                 go to 987
-               endif
-      !
-      !......if another iteration is required, update surface temperature
-      !......and try again
-               Ts=Tsnew
-            enddo
-      !
-      !...If iteration has not reached a solution at this point, (which is
-      !...rare) we have to resort to a cruder, brute force approach. So, ...
-      !
-            print*,'***Newton-Raphson scheme failed: Error =',Error
-            print*,'***Starting method of Bisection'
-  
+!      
+!......calculate surface energy budget terms
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Ts,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+!
+!
+!......restore intial temperature profile as therm1d takes a forward time step
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+!
+!......solve unsteady heat conduction equation to get new temperature profile 
+!......and bottom flux after one time step
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,&
+            rhoCp,zi,Sint,Pari,Tice,I_0)
+!
+!......now find mismatch in assumed and computed surface temperature
+      fTs=Ts-Tice(1)
+!
+!......stop iterating if mismatch is less than tolerance
+      if(abs(fTs).lt.toler) then
+!           print*,'Newton-Raphson scheme met tolerance after', &
+!                          nrit-1,'iterations'
+        go to 987
+      endif
+!
+!......re-do above calculations with slightly increased and decreased
+!......initial temperature to calculate first derivative by centred
+!......finite difference
+      dTemp=0.1
+      Tsp=Ts+dTemp
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+         Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTsdT1=Tsp-Tice(1)
+      Tsp=Ts-dTemp
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+       Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTsdT2=Tsp-Tice(1)
+!
+!......if derivative vanishes, take solution obtained at this point
+!......and don't iterate any further
+      if(abs(fTsdT1-fTsdT2).lt.1.D-02) then
+        print*,'fTsdT1~=fTsdT2 after ',nrit-1,' iterations'
+        go to 987
+      endif
+!
+!......otherwise, compute derivative and hence next guess from
+!......Newton-Raphson formula
+      fprime=(fTsdT1-fTsdT2)/(2.D+00*dTemp)
+      Tsnew=Ts-fTs/fprime
+!
+!......check error and stop iterating if tolerance is met
+      Error=Tsnew-Ts
+      if(abs(Tsnew-Ts).lt.toler) then
+!           print*,'Newton-Raphson scheme met tolerance after', &
+!                          nrit,'iterations'
+        go to 987
+      endif
+!
+!......if another iteration is required, update surface temperature
+!......and try again
+      Ts=Tsnew
+   enddo
+!
+!...If iteration has not reached a solution at this point, (which is
+!...rare) we have to resort to a cruder, brute force approach. So, ...
+!
+   print*,'***Newton-Raphson scheme failed: Error =',Error
+   print*,'***Starting method of Bisection'
+!
+!----------------------------------------------------------------------
+!--- If first try at Newton-Raphson iteration fails, try method of  ---
+!--- bisection which is less efficient, but more robust             ---
+!----------------------------------------------------------------------
+!
+!...To start, find where Ts-Tice(1) changes sign
+!
+!....first, do initial guess again
+   Ts1=Told(1)
+   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                 Ts1,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
+!
+   do l=1,nilay+1
+      Tice(l)=Told(l)
+   enddo
+   call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+         Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+   fTs1=Ts1-Tice(1)
+!
+!....increase and decrease Ts in 1 degree intervals until zero-crossing
+!....is bracketed
+   dTs=1.
+   do ksearch=1,10
+      Tsu=Ts1+dTs*float(ksearch-1)
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Tsu,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsu)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+           Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTsu=Tsu-Tice(1)
+!......check if crossing is between Ts1 and Tsu>Ts1
+      if(fTsu.gt.0.D+00.and.fTs1.le.0.D+00 &
+           .or.                            &
+        fTsu.lt.0.D+00.and.fTs1.ge.0.D+00) then
+            Ts2=Tsu
+            go to 887
+      endif
+!
+      Tsl=Ts1-dTs*float(ksearch-1)
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Tsl,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsl)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+         Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTsl=Tsl-Tice(1)
+!......check if crossing is between Ts1 and Tsl<Ts1
+      if(fTsl.gt.0.D+00.and.fTs1.le.0.D+00 &
+                       .or.                &
+        fTsl.lt.0.D+00.and.fTs1.ge.0.D+00) then
+            Ts2=Tsl
+            go to 887
+      endif
+!
+!.....if crossing not found, go back expand search
+   enddo
+!
+!...If no zero-crossing is found, have to resort to a forward time
+!...step with surface temperature from last time. First print message.
+!  
+   print*,'***Search for zero-crossing failed in nr_iterate!'
+   go to 900
+!
+!...If zero-crossing found, come here to start method of Bisection
+!
+887 continue
+!
+   do kb=1,20
+!......one end of interval
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Ts1,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+        Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTs1=Ts1-Tice(1)
+!......middle of interval
+      Tsm=(Ts1+Ts2)/2.D+00
+      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                    Tsm,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsm)
+!
+      do l=1,nilay+1
+         Tice(l)=Told(l)
+      enddo
+      call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+        Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+      fTsm=Tsm-Tice(1)
+!......check if solution found
+      if(abs(fTsm).lt.toler) then
+        print*,'Met tolerance in Bisection Method'
+        go to 901
+      endif
+!......if not, find which half interval and try again
+      if(fTs1*fTsm.gt.0.D+00) then
+         Ts1=Tsm
+      else
+         Ts2=Tsm
+      endif
+!......check if interval is smaller than tolerance
+      if(abs(Ts1-Ts2).lt.toler) then
+        print*,'Interval < tolerance in Bisection Method'
+        go to 901
+      endif
+   enddo
+!
+!...If method of Bisection fails, print message and do a forward
+!...time step
+!
+   print*,'***Bisection scheme failed: Ts1 =',Ts1,'Ts2 =',Ts2
+   go to 900
+!
+!...If method of Bisection is successful, take its solution, Tsm
+!...as the surface temperature and do a forward time step
+!
+901 continue
+   Ts=Tsm
+   go to 902
+!
+!------------------------------------------------------------------------
+!--- If all else fails, print message and do a forward time step      ---
+!--- using last surface temperature. This will allow model to proceed ---
+!--- but may leave a spurious spasm in the surface temperature.       ---
+!------------------------------------------------------------------------
+!
+900 continue
+   print*,'***!!!! Doing a forward time step anyway !!!***'
+   Ts=Told(1)
+902 continue
+   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+                 Ts,airt,rh,cloud,ice_hi,ice_hs,&
+                    lat,u10,v10,precip,airp,evap)
+      call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+!
+   do l=1,nilay+1
+      Tice(l)=Told(l)
+   enddo
+   call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
+        Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+!
+987 continue
+!
+!
+!    LEVEL1'end nr_iterate'
 
-            987 continue
-            
-#endif        
-   return
+return
+
 
 end subroutine nr_iterate 
 
