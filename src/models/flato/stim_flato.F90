@@ -1387,6 +1387,162 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
    integer                   ::  k  
 
 
+ !-----------------------------------------------------------------------
+
+!      LEVEL1'growthtb'
+!
+!...Calculate surface melt, if any
+!
+   call surfmelt(Tice(1),TopMelt)
+
+   !
+   !...Calculate change in thickness due to bottom growth or melt
+   !
+   
+         dhib=-(Iceflux(2)+ohflux)*dti/(rhoice*Hfi)
+         simass=simass+dhib*rhoice
+         if(dhib.gt.0.D+00) BotGrowth=BotGrowth+dhib
+         if(dhib.lt.0.D+00) BotMelt=BotMelt-dhib
+   
+   !
+   !...Check if sufficient snow to depress ice surface below sea level, if
+   !...so, convert some snow to ice ("flooding"). 
+   !...Add latent heat released by sea water
+   !...freezing in snow pores to upper ice layer. (Note, if this heat raises 
+   !...temperature above freezing, some ice will subsequently be melted by 
+   !...the calculations which follow
+   !
+   
+   
+         snsub=snmass-(rhowater-rhoice)*max(0.D+00,simass)/rhoice
+         if(snsub.gt.0.D+00) then
+   !......limit submerged snow to that available
+           if(snmass-snsub.lt.0.D+00) then
+             snsub=snmass
+             snmass=0.D+00
+           else
+             snmass=snmass-snsub
+           endif
+   
+   !......ice mass increase enhanced due to sea water filling pores in snow
+   !......and freezing
+           simass=simass+snsub*(1.D+00+(rhoice-rhosnow)/rhoice)
+           TopGrowth=TopGrowth+snsub*(1.D+00+(rhoice-rhosnow)/ &
+                                                   rhoice)/rhoice
+   !......add latent heat released by freezing sea water to ice (this may
+   !......subsequently cause some melt if temp. is already near melting)
+           porewat=snsub*(rhoice-rhosnow)/rhoice
+           Tice(nslay+1)=Tice(nslay+1)+porewat*Hfi/(0.5D+00*(rhoCp(nslay)* &
+                                 dzi(nslay)+rhoCp(nslay+1)*dzi(nslay+1)))
+           
+         endif
+   !
+   !...Calculate melt if temperature has risen above melting point). Note: 
+   !...don't need to do bottom temperatures because it is always at the 
+   !...freezing temp. of sea water. However, have to do surface temperature 
+   !...in case conductive flux causes melting even when surface flux is 
+   !...outward.
+   !
+   !....if there is snow cover, check for snow melt
+         if(nslay.gt.0) then
+   !......first do surface layer
+           Ts=Tice(1) !nsnote this is not in CA code?
+                 if(Ts.gt.Tmelts) then
+   !...snow_dist
+                     if(snow_dist) then
+                     dhst=Asnow*(Ts-Tmelts)*rhoCp(1)*dzi(1)*0.5D+00/(Hfw*rhosnow)
+                     dhi=(Aice+Amelt)*(Ts-Tmelts)*rhoCp(1)*dzi(2)*0.5D+00/(Hfi*rhoice)
+                     simass=simass-dhi*rhoice 
+                     Topmelt=Topmelt+dhi
+                     else
+                     dhst=(Ts-Tmelts)*rhoCp(1)*dzi(1)*0.5D+00/(Hfw*rhosnow)
+                     end if
+   !...end snow_dist
+                     Ts=Tmelts
+   !........reduce snow amount accordingly and replace heat that went unused
+                     snmass=snmass-dhst*rhosnow
+                     if(snmass.lt.0.D+00) then
+                        Ts=Ts-snmass*Hfw/(rhoCp(1)*dzi(1)*0.5D+00)
+                        snmass=0.D+00 
+                        nslay=0
+                     endif
+                     Tice(1)=Ts
+                 endif
+   !
+   !
+   !......now check internal points 
+           if(nslay.gt.1) then     
+             do k=2,nslay
+               Tl=Tice(k)
+               if(Tl.gt.Tmelts) then
+                 dhs=(Tl-Tmelts)*0.5D+00*(rhoCp(k-1)*dzi(k-1)+rhoCp(k) &
+                                                *dzi(k))/(Hfw*rhosnow)
+                 Tl=Tmelts
+   !..........reduce snow thickness and replace heat that went unused
+                 snmass=snmass-dhs*rhosnow
+                 TerMelt=TerMelt+dhs
+                 if(snmass.lt.0.D+00) then
+                   TerMelt=TerMelt+snmass/rhosnow
+                   Tl=Tl-snmass*Hfw/(0.5D+00*(rhoCp(k-1)*dzi(k-1) &
+                                                        +rhoCp(k)*dzi(k)))
+                   snmass=0.D+00
+                 endif
+                 Tice(k)=Tl
+               endif
+             enddo
+           endif 
+         endif
+   !
+   !....do top level if no snow (NOTE: surface temp. taken as Tmelts)
+   
+         if(nslay.eq.0) then
+           Tl=Tice(1)
+           if(Tl.gt.Tmelts) then
+             dhi=(Tl-Tmelts)*rhoCp(1)*dzi(1)*0.5D+00/(Hfi*rhoice)
+             Tl=Tmelts
+   !........first use heat to melt remaining snow, if any
+             snmass=snmass-dhi*rhoice
+             if(snmass.lt.0.D+00) then
+               dhi=-snmass/rhoice
+               snmass=0.D+00
+             else
+               dhi=0.D+00
+             endif
+   !........reduce ice mass accordingly and replace heat that went unused
+             simass=simass-dhi*rhoice
+             TopMelt=TopMelt+dhi
+             Tice(1)=Tl
+           endif
+         endif     
+   !
+   !....now check internal points (NOTE: internal points melt at Tmelti)
+         do k=max(2,nslay+1),nilay
+           Tl=Tice(k)
+           if(Tl.gt.Tmelti) then
+             dhi=(Tl-Tmelti)*0.5D+00*(rhoCp(k-1)*dzi(k-1)+rhoCp(k) &
+                                                *dzi(k))/(Hfi*rhoice)
+             Tl=Tmelti
+   !........reduce ice thickness accordingly and replace heat that went unused
+             simass=simass-dhi*rhoice
+             TerMelt=TerMelt+dhi
+             Tice(k)=Tl
+           endif
+         enddo
+   !
+   !...Check if negative ice has been created. If so, put heat into 
+   !...mixed layer (Note, negative ice is used to account for additional
+   !...heat which may remain after all ice is melted)
+   !
+         if(simass.le.0.D+00) then
+   !......add negative ice to mixed layer heat !NSnote, this is the dtemp comp from Winton? => should go into heat, is this done???
+           Hmix=Hmix-min(0.D+00,simass)*Hfi
+           simass=0.D+00
+         endif
+   !
+   !    LEVEL1'end growthtb'
+   
+      return  
+
 end subroutine growthtb
 
 !-----------------------------------------------------------------------
