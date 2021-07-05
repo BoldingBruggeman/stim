@@ -31,7 +31,7 @@
    real(rk), target, public :: Hfrazil = 0._rk ! Total frazil ice thickness
    real(rk), target, public :: Hsnow = 0._rk   ! Total snow thickness
    real(rk), target, public :: Hice = 0._rk    ! Total ice thickness
-   real(rk), target, public :: dHis = 0._rk    ! surface ice growth
+   real(rk), target, public :: dHis = 0._rk    ! surface ice growth 
    real(rk), target, public :: dHib = 0._rk    ! bottom ice growth
    real(rk), target, public :: albedo_ice = 0._rk
    real(rk), target, public :: attenuation_ice = 0._rk
@@ -193,7 +193,7 @@
 !  Simple 'ice model'
    !real(rk), public                    :: ice_layer  --> not used 
 !  Winton/UVIC ice model
-  ! real(rk), public, target            :: ice_hs,ice_hi  !--> jpnote: exists as hice and hsnow, and hi and hs for winton - defining it again, maybe remove if redundant 
+   real(rk), public, target            :: ice_hs,ice_hi  !--> jpnote: exists as hice and hsnow, and hi and hs for winton - defining it again, maybe remove if redundant 
 !  Winton ice model
   ! real(rk), public, target                    :: ice_ts,ice_T1,ice_T2
    !real(rk), public, target                    :: ice_tmelt,ice_bmelt
