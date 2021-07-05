@@ -293,7 +293,7 @@ allocate(Tice(2))
 ! !INTERFACE:
    subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,julianday,secondsofday, &
                      lon,lat,I_0,airt,airp,hum,u10,v10,cloud,rho,rho_0, &
-                     back_radiation_method,hum_method,fluxes_method,albedo,heat)
+                     longwave_radiation_method,hum_method,fluxes_method,albedo,heat)
 
 !??? call do_ice(h(nlev),) --> do_stim(dz,) should I use dz of h(nlev) or h(n) 
 
@@ -305,7 +305,7 @@ allocate(Tice(2))
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)    :: dz,dt,S,Qsw,lon,lat,airt,airp,hum,cloud,rho,rho_0     !jp
    REALTYPE, intent(inout)    :: Ta,precip,I_0,u10,v10,albedo,heat
-   integer, intent(in)     :: julianday,secondsofday,back_radiation_method,hum_method,fluxes_method
+   integer, intent(in)     :: julianday,secondsofday,longwave_radiation_method,hum_method,fluxes_method
   
 !
 ! !INPUT/OUTPUT PARAMETERS:
@@ -382,7 +382,7 @@ allocate(Tice(2))
                call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
                           I_0,airt,airp,hum,u10,v10,precip,cloud, &
                           Ta,S,rho,rho_0, &
-                          back_radiation_method,hum_method,fluxes_method,&
+                          longwave_radiation_method,hum_method,fluxes_method,&
                           ice_hi,ice_hs,ice_uvic_hm,ice_uvic_Tice, &
                           ice_uvic_Cond,ice_uvic_rhoCp, &
                           ice_uvic_Sint,ice_uvic_dzi,ice_uvic_zi, &
@@ -394,7 +394,7 @@ allocate(Tice(2))
                           ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_Asnow,&
                           ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i)
                !call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
-                                 !I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
+                                 !I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,longwave_radiation_method, &
                                  !hum_method,fluxes_method,albedo,heat)
                   
                              !-------- this exists after the call to do_ice_uvic in the old code ??? -jp

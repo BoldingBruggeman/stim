@@ -670,7 +670,7 @@ end subroutine do_stim_flato
 subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                         I_0,airt,airp,rh,u10,v10,precip,cloud, &
                         TSS,SSS,rhowater,rho_0, &
-                        back_radiation_method,hum_method,fluxes_method, &
+                        longwave_radiation_method,hum_method,fluxes_method, &
                         ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                         Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                         TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i)
@@ -699,7 +699,7 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(in)     :: SSS     ! sea surface salinity
    real(rk), intent(in)      :: rhowater   ! sea surface layer density --> called rho(nlev) in new code
    real(rk), intent(in)      :: rho_0 ! reference density --> from meanflow
-   integer, intent(in)       :: back_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
+   integer, intent(in)       :: longwave_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
     
@@ -784,9 +784,11 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    print *,'ice_uvic_precip_i',ice_uvic_precip_i
    print *,'ice_uvic_sfall_i',ice_uvic_sfall_i
 #endif 
+   !print *, 'longwave_radiation_method', longwave_radiation_method 
+   !print *, 'hum_method', hum_method
 
 !-----------------------------------------------------------------------
-#if 0
+!#if 0
 !BOC
 !   LEVEL0 'do_ice_uvic'
 !  Calculate seawater freezing temperature
@@ -868,7 +870,7 @@ dti=dto
 !  iteration on surface temperature
 !  This will update the ice temperature at each layer
 
-      call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
+      call nr_iterate(hum_method,longwave_radiation_method,fluxes_method,nilay,&
                       airt,rh,cloud,I_0,Told,Tice,Pari,&
                       Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
                       lat,u10,v10,precip,airp,evap,alb)
@@ -946,7 +948,7 @@ dti=dto
 
    return
 
-#endif
+!#endif
 
 end subroutine do_ice_uvic 
 ! EOC
@@ -1693,14 +1695,14 @@ end subroutine growthtb
 
 !-----------------------------------------------------------------------
 
-subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
+subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                      TTss,airt,rh,cloud,ice_hi,ice_hs,&
                      lat,u10,v10,precip,airp,evap)
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-      integer, intent(in)       :: back_radiation_method ! method for LW
+      integer, intent(in)       :: longwave_radiation_method ! method for LW
       integer, intent(in)       :: hum_method ! method for humidity
       integer, intent(in)       :: fluxes_method ! method for fluxes
       real(rk), intent(in)      :: TTss,airt,rh,cloud
@@ -1728,7 +1730,7 @@ subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
 !     Recalculate surface fluxes for sea ice conditions
 ! NSnote  TTss is in Kelvin!!!
       call humidity(hum_method,rh,airp,TTss-kelvin,airt)
-      call longwave_radiation(back_radiation_method, &
+      call longwave_radiation(longwave_radiation_method, &
                           lat,TTss,airt+kelvin,cloud,qb)     ! subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
       call airsea_fluxes(fluxes_method,.false.,.false., &
                          TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
@@ -1851,7 +1853,7 @@ end subroutine surfmelt
 
 
 
-subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
+subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
                         nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
                         Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
                         lat,u10,v10,precip,airp,evap,alb)
@@ -1896,7 +1898,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:  
-   integer, intent(in)       :: back_radiation_method ! method for LW
+   integer, intent(in)       :: longwave_radiation_method ! method for LW
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
    integer, intent(in)         :: nilay
@@ -1927,12 +1929,11 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    real(rk)                 ::    fTs,dTemp,Tsp,fTsdT1,fTsdT2
    real(rk)                  ::    fprime,Tsnew,Error,Ts1,fTs1
    real(rk)                  ::    dTs,Tsu,fTsu,Ts2,Tsm,fTsm,fTsl, Tsl,Ts  
-   integer                   ::    nrit,ksearch,kb,l
+   integer                   ::    nrit,ksearch,kb_uvic,l     !jpnote renamed kb 
    real(rk),parameter        ::    toler=1.D-02 
 
-      
 !-----------------------------------------------------------------------
-
+#if 0
 !      LEVEL1'nr_iterate'
 !
 !
@@ -1955,7 +1956,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    do nrit=1,5
 !      
 !......calculate surface energy budget terms
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Ts,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
@@ -1986,7 +1987,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !......finite difference
       dTemp=0.1
       Tsp=Ts+dTemp
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
@@ -1998,7 +1999,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
          Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
       fTsdT1=Tsp-Tice(1)
       Tsp=Ts-dTemp
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
@@ -2050,7 +2051,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !
 !....first, do initial guess again
    Ts1=Told(1)
-   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                  Ts1,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
@@ -2067,7 +2068,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    dTs=1.
    do ksearch=1,10
       Tsu=Ts1+dTs*float(ksearch-1)
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsu,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsu)
@@ -2087,7 +2088,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
       endif
 !
       Tsl=Ts1-dTs*float(ksearch-1)
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsl,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsl)
@@ -2117,11 +2118,12 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !
 !...If zero-crossing found, come here to start method of Bisection
 !
-887 continue
+ 887 continue
 !
-   do kb=1,20
+   do kb_uvic=1,20
 !......one end of interval
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Ts1,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
@@ -2134,7 +2136,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
       fTs1=Ts1-Tice(1)
 !......middle of interval
       Tsm=(Ts1+Ts2)/2.D+00
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsm,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsm)
@@ -2172,7 +2174,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !...If method of Bisection is successful, take its solution, Tsm
 !...as the surface temperature and do a forward time step
 !
-901 continue
+ 901 continue
    Ts=Tsm
    go to 902
 !
@@ -2182,11 +2184,11 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !--- but may leave a spurious spasm in the surface temperature.       ---
 !------------------------------------------------------------------------
 !
-900 continue
+ 900 continue
    print*,'***!!!! Doing a forward time step anyway !!!***'
    Ts=Told(1)
-902 continue
-   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+ 902 continue
+   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                  Ts,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
@@ -2197,14 +2199,14 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
         Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
 !
-987 continue
+ 987 continue
 !
 !
 !    LEVEL1'end nr_iterate'
 
 return
 
-
+#endif
 end subroutine nr_iterate 
 
 !-----------------------------------------------------------------------
@@ -2723,7 +2725,6 @@ real function erfc(x)
 
       if ( x.lt.0.0 ) erfc = 2.0 - erfc
 
-      print *, 'erfc', erfc
       return
 end function erfc 
 
