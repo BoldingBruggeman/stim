@@ -670,7 +670,7 @@ end subroutine do_stim_flato
 subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                         I_0,airt,airp,rh,u10,v10,precip,cloud, &
                         TSS,SSS,rhowater,rho_0, &
-                        back_radiation_method,hum_method,fluxes_method, &
+                        longwave_radiation_method,hum_method,fluxes_method, &
                         ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                         Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                         TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i)
@@ -699,7 +699,7 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(in)     :: SSS     ! sea surface salinity
    real(rk), intent(in)      :: rhowater   ! sea surface layer density --> called rho(nlev) in new code
    real(rk), intent(in)      :: rho_0 ! reference density --> from meanflow
-   integer, intent(in)       :: back_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
+   integer, intent(in)       :: longwave_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
     
@@ -784,23 +784,171 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    print *,'ice_uvic_precip_i',ice_uvic_precip_i
    print *,'ice_uvic_sfall_i',ice_uvic_sfall_i
 #endif 
+   !print *, 'longwave_radiation_method', longwave_radiation_method 
+   !print *, 'hum_method', hum_method
+
+!-----------------------------------------------------------------------
+!#if 0
+!BOC
+!   LEVEL0 'do_ice_uvic'
+!  Calculate seawater freezing temperature
+!   Tfreezi = (-0.0575D00*SSS)+kelvin
+!KB   STDERR T,S
+!
+! set ice timestep to ocean timestep
+
+dti=dto
+! initialize new ice formation in open water, melt/growth for this timestep
+      dmsi=0 
+      TopMelt = 0 
+      Botmelt = 0 
+      TerMelt = 0 
+      TopGrowth = 0 
+      BotGrowth = 0 
+      Ff= 0
+      Fs= 0
+! degC to K unit conversion
+   airtk=airt+kelvin
+
+ if(sfall_method .eq. 2) then
+!get snowfall from precipitation
+         if((airtk-Tmelts).lt.(-5.0)) then
+                 p_tmp = 1.0
+         elseif((airtk-Tmelts).ge.(-5.0).and.(airtk-Tmelts).le.(5.0)) then
+                     p_tmp = 1.0-(airtk-Tmelts+5.0)*0.1
+         else
+                     p_tmp = 0.0
+         endif
+         ! - add factor for drifting snow...
+         p_tmp=p_tmp*dfact
+      sfall=precip*p_tmp*rhowaterfresh/rhoscold ! m/s  
+ endif
+! set old snow and ice mass and meltpond mass
+
+!nsnote, are all the mass variables known from the last timestep? if not, set here...???
+      snmasso=snmass
+      simasso=simass
+      meltmasso=meltmass
+
+!  add snowfall to existing snow if ice is present (no accumulation over open water!) 
+
+!  and if air temp. is below freezing.
+      if (simass.gt.rhoice*hsmin .and. airtk.lt. kelvin) then               
+         snmass=snmass+rhoscold*sfall*dti 
+!  Remove snow falling on ice from precip
+       precip_i=precip !H! Save precip before set to zero.
+       precip=precip-sfall*rhoscold/rhowaterfresh
+       precip =max(0.0D0,precip)
+      !NSnote, make sure no double counting of precip
+      ! if no ice then precip  (or if precip not given, water equivalent for 
+      ! snow fall) should go in the ocean, if ice then sfall, but no 
+      ! additional precip in the ocean !!!
+      endif
+
+!  calculate snow density - depends on mean snow layer temperature
+
+   Tsav=(Tice(1)+Tice(2))/2.D+00
+   if(Tsav.lt.Tmelti) then
+      rhosnow=rhoscold
+   else
+      rhosnow=rhoswarm
+   endif
 
 
-   !call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,sst,Fh,heat,precip,precip_i)
-   call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,TSS,Fh,heat,precip,precip_i)
-                     
+   swr_0 = I_0/(1-alb) !H! save incidental swr.
+!  if ice is present, calculate growth or melt, if not calculate potential new growth
+!
+   if(simass.eq.0.D+00) then
+      Hmix=Hmix+(heat+I_0)*dti
+      if(depmix.eq.0.0) depmix=h 
+      call open_water(nilay,I_0,Sice_bulk,Hmix,Tice,depmix,TSS,Fh,heat,precip,precip_i)
+   else
+! reset I_0 so it can be recalculated for ice
+      I_0 = I_0/(1-alb) ! Here alb is water albedo from GOTM
 
-   !call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
-                  !airt,hum,cloud,I_0,Told,Tice,Pari,&
-                 ! Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-                  !latitude,u10,v10,precip,airp,evap,alb)
-   call nr_iterate(hum_method,back_radiation_method,fluxes_method,nilay,&
-                  airt,rh,cloud,I_0,ice_uvic_Told,ice_uvic_Tice,ice_uvic_Pari,&
-                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-                  lat,u10,v10,precip,airp,evap,alb)
+!  do surface energy budget and heat conduction calculations via N-R 
+!  iteration on surface temperature
+!  This will update the ice temperature at each layer
 
-   
-   !call cndiffus()
+      call nr_iterate(hum_method,longwave_radiation_method,fluxes_method,nilay,&
+                      airt,rh,cloud,I_0,Told,Tice,Pari,&
+                      Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                      lat,u10,v10,precip,airp,evap,alb)
+
+!  construct depth array by adding up dzi's
+      zi(1)= 0
+      do k=2,nilay+1
+         zi(k)=zi(k-1)+dzi(k-1)
+      enddo
+
+!   add short wave radiation that penetrates snow/ice slab to mixed layer 
+!nsnote, check if ok that if snow_dist can be removed and calculation done with PAR for all cases
+!if (snow_dist) then 
+       Hmix=Hmix+Pari(size(Pari))*dti
+!else
+!       Hmix=Hmix+PenSW*exp(-swkappa*zi(nilay+1))*dti
+!endif
+
+!add mixed layer heat storage to oceanic heat flux -
+
+       ohflux=Hmix/dti
+       Hmix=0.D+00
+
+!...Calculate sea-ice turbulent heat flux and input it to the ohflux
+       Fh=ohflux !NSnote check
+       if(ice_hi .gt. 0) then  
+!          heat=-Fh !NSnote, don't think so, if, ohflux is used for ice growth
+!          heat=0.D00 
+       end if ! NSnote: What if no ice?, all melted..what heat then? 
+!         I_0=PenSW  
+         I_0=Pari(nilay+1) !NScheck
+
+!...........calculate growth or melt amount at top and bottom surface, 
+!...........converting snow to ice if ice surface is submerged
+
+!  initialize top, interior and bottom melt and growth  
+!
+    
+
+
+      call growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt,TopMelt,&
+                       BotGrowth,BotMelt,Hmix,ohflux)
+!NSnote, Hmix contains extra heat left from melting, 
+!this should be transferred back into ocean to heat the water
+       heat=Hmix/dti
+
+    if (ice_salt) &
+      call saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
+                    rhoice,rhosnow,rhowater,rhowaterfresh,zi,Tice,Sice_bulk,Ff,Fs, &
+                     TopGrowth,BotGrowth,TopMelt,BotMelt,TerMelt)
+
+
+   endif
+
+!...Update ice and snow thickness from mass and density so accurate for end of timestep
+!
+       ice_hs=snmass/rhosnow
+       ice_hi=simass/rhoice
+       ice_hm=meltmass/rhowaterfresh
+
+!  Change units from m (per timestep) to m/s for potential transfer to FABM 
+!  (ice algae, since FABM is not aware of the timestep) 
+                    
+       TopMelt=TopMelt/dti
+       BotMelt=BotMelt/dti
+       TerMelt=TerMelt/dti
+       TopGrowth=TopGrowth/dti
+       BotGrowth=BotGrowth/dti
+
+! set area fractions of ice so they can be written out
+       Aice_i=Aice
+       Asnow_i=Asnow
+       Amelt_i=Amelt
+       sfall_i=sfall
+
+   return
+
+!#endif
 
 end subroutine do_ice_uvic 
 ! EOC
@@ -1547,14 +1695,14 @@ end subroutine growthtb
 
 !-----------------------------------------------------------------------
 
-subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
+subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                      TTss,airt,rh,cloud,ice_hi,ice_hs,&
                      lat,u10,v10,precip,airp,evap)
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-      integer, intent(in)       :: back_radiation_method ! method for LW
+      integer, intent(in)       :: longwave_radiation_method ! method for LW
       integer, intent(in)       :: hum_method ! method for humidity
       integer, intent(in)       :: fluxes_method ! method for fluxes
       real(rk), intent(in)      :: TTss,airt,rh,cloud
@@ -1582,8 +1730,8 @@ subroutine sebudget(hum_method,back_radiation_method,fluxes_method,&
 !     Recalculate surface fluxes for sea ice conditions
 ! NSnote  TTss is in Kelvin!!!
       call humidity(hum_method,rh,airp,TTss-kelvin,airt)
-      call longwave_radiation(back_radiation_method, &
-                          lat,TTss,airt+kelvin,cloud,qb)
+      call longwave_radiation(longwave_radiation_method, &
+                          lat,TTss,airt+kelvin,cloud,qb)     ! subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
       call airsea_fluxes(fluxes_method,.false.,.false., &
                          TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
 
@@ -1705,7 +1853,7 @@ end subroutine surfmelt
 
 
 
-subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
+subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
                         nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
                         Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
                         lat,u10,v10,precip,airp,evap,alb)
@@ -1750,7 +1898,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:  
-   integer, intent(in)       :: back_radiation_method ! method for LW
+   integer, intent(in)       :: longwave_radiation_method ! method for LW
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
    integer, intent(in)         :: nilay
@@ -1781,12 +1929,11 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    real(rk)                 ::    fTs,dTemp,Tsp,fTsdT1,fTsdT2
    real(rk)                  ::    fprime,Tsnew,Error,Ts1,fTs1
    real(rk)                  ::    dTs,Tsu,fTsu,Ts2,Tsm,fTsm,fTsl, Tsl,Ts  
-   integer                   ::    nrit,ksearch,kb,l
+   integer                   ::    nrit,ksearch,kb_uvic,l     !jpnote renamed kb 
    real(rk),parameter        ::    toler=1.D-02 
 
-      
 !-----------------------------------------------------------------------
-
+#if 0
 !      LEVEL1'nr_iterate'
 !
 !
@@ -1809,7 +1956,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    do nrit=1,5
 !      
 !......calculate surface energy budget terms
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Ts,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
@@ -1840,7 +1987,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !......finite difference
       dTemp=0.1
       Tsp=Ts+dTemp
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
@@ -1852,7 +1999,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
          Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
       fTsdT1=Tsp-Tice(1)
       Tsp=Ts-dTemp
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsp,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
@@ -1904,7 +2051,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !
 !....first, do initial guess again
    Ts1=Told(1)
-   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                  Ts1,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
@@ -1921,7 +2068,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    dTs=1.
    do ksearch=1,10
       Tsu=Ts1+dTs*float(ksearch-1)
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsu,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsu)
@@ -1941,7 +2088,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
       endif
 !
       Tsl=Ts1-dTs*float(ksearch-1)
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsl,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsl)
@@ -1971,11 +2118,12 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !
 !...If zero-crossing found, come here to start method of Bisection
 !
-887 continue
+ 887 continue
 !
-   do kb=1,20
+   do kb_uvic=1,20
 !......one end of interval
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Ts1,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
@@ -1988,7 +2136,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
       fTs1=Ts1-Tice(1)
 !......middle of interval
       Tsm=(Ts1+Ts2)/2.D+00
-      call sebudget(hum_method,back_radiation_method,fluxes_method,&
+      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                     Tsm,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsm)
@@ -2026,7 +2174,7 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !...If method of Bisection is successful, take its solution, Tsm
 !...as the surface temperature and do a forward time step
 !
-901 continue
+ 901 continue
    Ts=Tsm
    go to 902
 !
@@ -2036,11 +2184,11 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
 !--- but may leave a spurious spasm in the surface temperature.       ---
 !------------------------------------------------------------------------
 !
-900 continue
+ 900 continue
    print*,'***!!!! Doing a forward time step anyway !!!***'
    Ts=Told(1)
-902 continue
-   call sebudget(hum_method,back_radiation_method,fluxes_method,&
+ 902 continue
+   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                  Ts,airt,rh,cloud,ice_hi,ice_hs,&
                     lat,u10,v10,precip,airp,evap)
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
@@ -2051,14 +2199,14 @@ subroutine nr_iterate(hum_method,back_radiation_method,fluxes_method,&
    call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi, &
         Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
 !
-987 continue
+ 987 continue
 !
 !
 !    LEVEL1'end nr_iterate'
 
 return
 
-
+#endif
 end subroutine nr_iterate 
 
 !-----------------------------------------------------------------------
@@ -2522,9 +2670,9 @@ end subroutine albedo_ice_uvic
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL1 'clean_ice_uvic'  !commented for now 
+   !LEVEL1 'clean_ice_uvic'  !commented for now jpnote
 
-   !LEVEL3 'closing ice.nc file...'  !commented for now 
+   !LEVEL3 'closing ice.nc file...'  !commented for now  jpnote
 !   call close_ncdf()
    
       return
@@ -2577,7 +2725,6 @@ real function erfc(x)
 
       if ( x.lt.0.0 ) erfc = 2.0 - erfc
 
-      print *, 'erfc', erfc
       return
 end function erfc 
 

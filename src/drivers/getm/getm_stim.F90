@@ -218,7 +218,7 @@ return
    subroutine do_ice(dz,dt,Tw,S,Ta)
 #else
    subroutine do_ice(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,julianday,secondsofday,longitude, &
-                     latitude,I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,back_radiation_method, &
+                     latitude,I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,longwave_radiation, &
                      hum_method,fluxes_method,albedo,heat)
 #endif
 !
@@ -234,7 +234,7 @@ return
    REALTYPE, intent(in)    :: dz(:,:),dt,S(:,:),Ta(:,:),precip(:,:),Qsw(:,:)
    REALTYPE, intent(in)    :: longitude,latitude,I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,albedo,heat
    integer, intent(in)     :: julianday,secondsofday
-   integer, intent(in)     :: back_radiation_method,hum_method,fluxes_method
+   integer, intent(in)     :: longwave_radiation,hum_method,fluxes_method
   
 #endif
 !
