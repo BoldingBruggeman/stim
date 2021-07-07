@@ -4,96 +4,37 @@
 ! !MODULE: stim_flato --- flato thermodynamic ice model
 ! \label{sec:stim_flato}
 !
-! !INTERFACE:
-   module stim_flato
+! !INTERFACE
+module stim_flato
 !
 ! !DESCRIPTION:
-!  The model consists of a zero heat capacity snow layer overlying two equally
-!  thick sea ice layers. The upper ice layer has a variable heat capacity to
-!  represent brine pockets. The lower ice layer has a fixed heat capacity.
-!  The prognostic variables are hs (snow layer thickness), hi (ice layer
-!  thickness), T1 and T2, the upper and lower ice layer temperatures located
-!  at the midpoints of the layers. The ice model performs two functions, the
-!  first is to calculate the ice temperature and the second is to calculate
-!  changes in the thickness of ice and snow.
 !
-!------------------------------------------------------------------------------!
-!                                                                              !
-!                       THREE-LAYER VERTICAL THERMODYNAMICS                    !
-!                                                                              !
-! Reference:  M. Winton , 2000: "A reformulated three-layer sea ice model",     !
-!            Journal of Atmospheric and Oceanic Technology, 17, 525-531.       !
-!                                                                              !
-!                                                                              !
-!        -> +---------+ <- Ts - diagnostic surface temperature ( <= 0C )       !
-!       /   |         |                                                        !
-!     hs    |  snow   | <- 0-heat capacity snow layer                          !
-!       \   |         |                                                        !
-!        => +---------+                                                        !
-!       /   |         |                                                        !
-!      /    |         | <- T1 - upper 1/2 ice temperature; this layer has      !
-!     /     |         |         a variable (T/S dependent) heat capacity       !
-!   hi      |...ice...|                                                        !
-!     \     |         |                                                        !
-!      \    |         | <- T2 - lower 1/2 ice temp. (fixed heat capacity)      !
-!       \   |         |                                                        !
-!        -> +---------+ <- Tf - base of ice fixed at seawater freezing temp.   !
-!                                                                              !
-!                                                     Mike Winton (mw@gfdl.gov)!
-!------------------------------------------------------------------------------!
-!  Note: in this implementation the equations are multiplied by hi to improve
-!  thin ice accuracy
 !
-!  The code is based on the open source sea ice model included in the Modular
-!  Ocean Model.
+!
+!
 !
 ! !USES:
    use stim_variables
-   use ice_thm_mod_flato
+  
    IMPLICIT NONE
 !
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-!WINTON
    public                              :: init_stim_flato
-   public                              :: do_stim_flato  !winton specific jp 
-
-!FLATO 
-   public                              :: do_ice_uvic !jp added 
+   public                              :: do_ice_uvic 
 !
 ! !PRIVATE DATA MEMBERS:
-!WINTON 
-   real(rk), pointer :: Ts,T1,T2  !jpnote uncomment for winton
-   !real(rk), pointer :: hi,hs,dh1,dh2 !jpnote: commented orig
-   real(rk), pointer :: dh1,dh2
-   real(rk), pointer :: trn
-   real(rk)          :: pen
-   real(rk), pointer :: tmelt,bmelt
-   real(rk), pointer :: fb    ! heat flux from ocean to ice bottom (W/m^2)
-!Flato 
-   real(rk), pointer :: hi,hs  ! jpnote: keep for flato
-
-   !for pointer --- irrelevant --- for now jpnote
-   !real(rk), pointer :: ice_hi, ice_hs 
-   !real(rk), pointer :: swr_0,precip_i,sfall_i 
-   !real(rk), pointer :: TopMelt,Botmelt,TerMelt,TopGrowth,BotGrowth 
-   !real(rk), pointer :: Fh,Ff,Fs 
-   !real(rk), pointer :: Sice_bulk,Hmix,Aice_i,Asnow_i,Amelt_i,ice_hm 
-   !real(rk), pointer :: Cond,rhoCp,Sint,dzi,zi,Told,Pari 
-   !real(rk), pointer :: uvic_Tice
-   !parb,parui
-   !Tice => ice_uvic_Tice
-
 !
-!FLATO
 !
 ! LOCAL VARIABLES: 
+!
 !   rhosnow     - snow density (kg m-3)
    real(rk), public :: rhosnow
 
 !fixed size variables
+!
 !   Iceflux     - a 2-element array of time-step averaged boundary fluxes
 !                  returned from heat conduction scheme, defined as positive
 !                 downward in accordance with vertical coordinate sign
@@ -179,10 +120,6 @@
 !  Pi !NSnote read from gotm?
    real(rk), parameter :: pi=4.D+00*atan(1.D+00)
 
-   real(rk) :: dummy = 0 ! test variables for testing functions and subroutines -jp
-
-!-----------------end of flato vars-------------------------------------------------- 
-
 
 ! !REVISION HISTORY:
 !  Original author: Michael Winton 
@@ -199,54 +136,21 @@
 !
 ! !INTERFACE:
 !KB   subroutine init_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip)
-subroutine init_stim_flato(Ta)
+subroutine init_stim_flato() 
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    IMPLICIT NONE
 ! 
-   real(rk), intent(in)    :: Ta    !winton specific 
-#if 0
-! !INPUT PARAMETERS:
-   real(rk), intent(in)    :: dz,dt,Ta,S,precip
-!
-! !INPUT/OUTPUT PARAMETERS:
-   integer, intent(inout)  :: ice_cover
-   real(rk), intent(inout) :: Tw
-#endif
-
-
-!Flato 
 ! !LOCAL VARIABLES:
 !
-   !integer             :: k,rc     !from init_ice_uvic - jp 
+   integer             :: k,rc     !from init_ice_uvic - jp 
 ! !LOCAL PARAMETERS:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (runwintonflato .eq. 1) then  !winton specific 
-
-
-   hs => Hsnow !keep for flato
-   hi => Hice  !keep for flato    !should I change to ice_hi ? 
-   trn => transmissivity
-   Ts => Tice_surface
-   Ts = Ta
-   T1 => Tice(1)
-   T1 = Ta
-   T2 => Tice(2)
-   T2 = Tf
-   dh1 => dHis
-   dh2 => dHib
-   tmelt => surface_ice_energy
-   bmelt => bottom_ice_energy
-   fb => ocean_ice_flux
-
-   else
-
-
-!  FLATO 
+!
 !
 !-------------------------------------------------------------------------------------
 !      copy paste from init_ice_uvic FROM ice_uvic.F90
@@ -262,9 +166,6 @@ subroutine init_stim_flato(Ta)
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Nadja Steiner based on original model from Greg Flato
 !
-!
-! !LOCAL VARIABLES:
-  ! integer             :: k,rc  !jpnote: added aboce
 
    ! check if the snow distribution is set
    if(snow_dist .and. distr_type .eq. -1) then
@@ -305,87 +206,6 @@ subroutine init_stim_flato(Ta)
 !return
 
 !-------------------------------------------------------------------------
-!
-! --> commented out parts: not relevant to new gotm 
-!
-   !  initialize namelist variables to reasonable defaults.
-  ! ice_method=0
-
-   !  The different ice models
-   !select case (ice_method)
-   !case (0)
-     ! LEVEL2 'No ice calculations included'
-   !case (1)
-      !LEVEL2 'Clip heat-fluxes if SST < freezing point (function of S)'
-    !  ice_layer=0
-   !case (2)
-      !LEVEL2 'Thermodynamic ice model adapted from Winton'
-    !  hsnow=0;hice=0;ice_T1=0;ice_T2=0
-     ! ice_ts=0;ice_tmelt=0;ice_bmelt=0
-  ! case (3)
-      !LEVEL2 'Thermodynamic ice model adapted from Flato&Brown, 1992, UVic'
-     ! call init_ice_uvic(namlst)
-   !-------------------------------------------------------------------------
-#if 0
-   allocate(ice_uvic_Tice(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
-   ice_uvic_Tice=0
-      do k=1,nilay+1
-         ice_uvic_Tice(k)=245.+(Tfreezi-245.)*float(k-1)/float(nilay)
-      enddo
-   allocate(ice_uvic_Cond(nilay),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Cond)'
-   ice_uvic_Cond =0
-   allocate(ice_uvic_rhoCp(nilay),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_rhoCp)'
-   ice_uvic_rhoCp =0
-   allocate(ice_uvic_Sint(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Sint)'
-   ice_uvic_Sint =0
-   allocate(ice_uvic_dzi(nilay),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
-   ice_uvic_dzi =0
-   allocate(ice_uvic_zi(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zi)'
-   ice_uvic_zi =0
-   allocate(ice_uvic_Told(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Told)'
-   ice_uvic_Told =0
-   allocate(ice_uvic_Pari(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Pari)'
-   ice_uvic_Pari =0
-   allocate(ice_uvic_dum(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dum)'
-   allocate(ice_uvic_dzice(nilay),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_dzi)'
-      do k=1,nilay
-         ice_uvic_dzice(k)=float(k)
-      enddo
-   allocate(ice_uvic_zice(nilay+1),stat=rc)
-   if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_zice)'
-      do k=1,nilay+1
-         ice_uvic_zice(k)=float(k)
-      enddo
-
-   ice_uvic_dum =0
-   hsnow=0;hice=0;ice_uvic_hm=0
-   ice_uvic_ts=273.16D+00;ice_uvic_tb=273.16D+00;ice_uvic_Fh=0
-   ice_uvic_swr_0=0;ice_uvic_precip_i=0;ice_uvic_sfall_i=0
-   ice_uvic_parb=0;ice_uvic_parui=0;
-   ice_uvic_Ff=0;ice_uvic_Fs=0
-   ice_uvic_Sicebulk=6.0D+00
-   ice_uvic_topmelt=0;ice_uvic_botmelt=0
-   ice_uvic_termelt=0;ice_uvic_topgrowth=0
-   ice_uvic_botgrowth=0;ice_uvic_Hmix=0 
-   ice_uvic_Aice=0;ice_uvic_Asnow=0 
-   ice_uvic_Amelt=0 
-
-#endif 
-
-  
-!-----------------------------------------------------------------------
-   endif
-!-------------------------------------------------------------------------------
 
 #if 0 
    !printing Vars for Testing purposes
@@ -536,132 +356,6 @@ end subroutine init_stim_flato
 
 !-----------------------------------------------------------------------
 
-!BOP
-!-----------------------------------------------------------------------
-!   !WINTON SPECIFIC SUBROUTINE 
-!-----------------------------------------------------------------------
-! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_flato}
-!
-
-! !INTERFACE:
-   subroutine do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)  
-!KB   subroutine do_ice_flato(dt,h,S,sst,T,hs,hi,Ti,surface_melt,bottom_melt)
-!
-! !DESCRIPTION:
-!  This subroutine updates the sea ice prognostic variables. The updated
-!  variables are upper ice layer temperature (T1), lower ice layer temperature
-!  (T2), snow thickness (hs), and ice thickness (hi).
-!
-!  The ice model performs this in two steps. First the temperatures are updated
-!  and secondly the changes in ice and snow thickness are calculated.
-!
-!  Any surplus energy that is not used for melting is returned in tmelt and
-!  bmelt.
-!
-!  Evaporation and bottom ablation formation are not included in
-!  this version of the model. Furthermore we do not keep an explicit water
-!  and salt budget for the sea ice and how that affects the water and salt
-!  budgets in the ocean.
-!
-
-! !USES:
-   IMPLICIT NONE  
-!
-! !INPUT PARAMETERS:
-   real(rk), intent(in)    :: dz,dt,Ta,S,precip,Qsw
-!
-! !INPUT/OUTPUT PARAMETERS:
-   integer, intent(inout)  :: ice_cover
-   real(rk), intent(inout) :: Tw
-!
-   interface
-      subroutine Qfluxes(T,qh,qe,qb)
-         integer, parameter                   :: rk = kind(1.d0)
-         real(rk), intent(in)                 :: T
-         real(rk), intent(out)                :: qh,qe,qb
-      end subroutine
-   end interface
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-! !OUTPUT PARAMETERS:
-!
-! !LOCAL VARIABLES:
-   real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
-   real(rk)        :: evap  ! evaporation of ice (m/s)
-   real(rk)        :: snow
-!
-   real(rk)        :: A, B, dts=0.01
-   real(rk)        :: qe,qh,qb
-!
-   real(rk)        :: h1,h2
-   real(rk)        :: ts_new
-   real(rk)        :: frazil
-   real(rk)        :: heat_to_ocn, h2o_to_ocn, h2o_from_ocn, snow_to_ice
-!
-! !LOCAL PARAMETERS:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   !LEVEL0 'do_stim_flato'
-   tmelt = 0._rk
-   bmelt = 0._rk
-
-   ! Calculate seawater freezing temperature
-   Tf = -0.0575_rk*S
-
-   if (ice_cover .gt. 0) then
-      call ice_optics(albedo_ice, pen, trn, hs, hi, ts, Tf)
-      I = Qsw*(1._rk-trn)
-      h1 = hi/2._rk
-      h2 = h1
-
-      ! check this out
-      call Qfluxes(Ts,qe,qh,qb)
-      A = -(qe+qh+qb) ! (7-)
-      call Qfluxes(Ts+dts,qe,qh,qb)
-      B = -(qe+qh+qb)
-      B = (B-A)/dts ! (8)
-      A = A-I - Ts*B ! (-7)
-
-      !https://github.com/mom-ocean/MOM5/blob/08266af73b04d2334be4a52d0c45c174f447cee4/src/ice_sis/ice_model.F90
-      call ice3lay_temp(hs,hi,t1,t2,ts_new,A,B,pen*I,Tf,fb,dt,tmelt,bmelt)
-      ts = ts_new
- !     frazil = 0._rk
-      Hfrazil = 0._rk
-   else
-      frazil = -(Tw-Tf)*dz*Cw
-      if (frazil .gt. 0._rk) Hfrazil = frazil/(rho_ice*L_ice)
-   end if
-
-   if (ice_cover .gt. 0 .or. frazil .gt. 0._rk) then
-      call ice3lay_resize(hs, hi, t1, t2, snow, frazil, evap, tmelt, bmelt, &
-                          tf, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
-                          snow_to_ice)
-   !                       snow_to_ice, bablt)
-!write(*,*) 'CC ',heat_to_ocn, h2o_to_ocn, h2o_from_ocn
-   end if
-
-hs = 0._rk
-   if (hi .gt. 0._rk) then
-      ice_cover = 2
-   else
-      ice_cover = 0
-   end if
-
-   return
-
-end subroutine do_stim_flato
-
-
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
-!  !BEGINNING OF FLATO SPECIFIC 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
-
 !BOP 
 !
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
@@ -754,41 +448,65 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: ohflux !heat flux from ocean into ice underside (W m-2)
 !NSnote, not sure what evap is for
-
 #if 0
-   print *,'Hice',Hice
-   print *,'Hsnow',Hsnow
-   print *,'ice__uvic_hm',ice_uvic_hm
-   print *,'ice_uvic_Tice(nilay+1)',ice_uvic_Tice(nilay+1)
-   print *,'ice_uvic_Cond(nilay)',ice_uvic_Cond(nilay)
-   print *,'ice_uvic_rhoCp(nilay)',ice_uvic_rhoCp(nilay)
-   print *,'ice_uvic_Sint(nilay+1) ',ice_uvic_Sint(nilay+1) 
-   print *,'ice_uvic_dzi(nilay)',ice_uvic_dzi(nilay)
-   print *,'ice_uvic_zi(nlmax)',ice_uvic_zi(nlmax)
-   print *, 'ice_uvic_Pari(nilay+1)',ice_uvic_Pari(nilay+1)
-   print *,'ice_uvic_Told(nilay+1)',ice_uvic_Told(nilay+1)
-   print *,'ice_uvic_Fh',ice_uvic_Fh
-   print *,'ice_uvic_Ff',ice_uvic_Ff
-   print *,'ice_uvic_Fs',ice_uvic_Fs
-   print *,'ice_uvic_Sicebulk',ice_uvic_Sicebulk
-   print *,'ice_uvic_TopMelt',ice_uvic_TopMelt
-   print *,'ice_uvic_BotMelt', ice_uvic_BotMelt
-   print *, 'ice_uvic_TerMelt',ice_uvic_TerMelt
-   print *,'ice_uvic_TopGrowth',ice_uvic_TopGrowth
-   print *,'ice_uvic_BotGrowth',ice_uvic_BotGrowth
-   print *,'ice_uvic_Hmix',ice_uvic_Hmix
-   print *,'ice_uvic_Aice',ice_uvic_Aice
-   print *,'ice_uvic_Asnow',ice_uvic_Asnow
-   print *,'ice_uvic_Amelt',ice_uvic_Amelt
-   print *,'ice_uvic_swr_0',ice_uvic_swr_0
-   print *,'ice_uvic_precip_i',ice_uvic_precip_i
-   print *,'ice_uvic_sfall_i',ice_uvic_sfall_i
-#endif 
-   !print *, 'longwave_radiation_method', longwave_radiation_method 
-   !print *, 'hum_method', hum_method
+   print *,' dto ', dto! ocean timestep (sec) ! dto ??? 
+   !real(rk), intent(in)     :: dz !--> h from meanflow ???
+   print *,' h ', h ! sea surface layer thickness --> is this the same as dz ???
+   
+   print *,'julianday',julianday ! this julian day --> from time
+   print *,'secondsofday',secondsofday ! seconds for this day -->  from time
+   print *,'lon',  lon   ! longitude for this point --> longitude from gotm
+   print *,'lat ',lat! latitude for this point --> latitude from gotm 
+   print *,'I_0',  I_0  ! shortwave radiation at sea surface  
+   print *,' airt', airt ! 2m temperature
+   print *,'airp', airp  ! sea surface pressure
+   !real(rk), intent(in)     :: hum   ! relative humidity from airsea
+   print *,' rh', rh    ! relative humidity --> is this the same as hum ??? 
+   print *,' u10 ', u10  ! 10 m wind u-component
+   print *,'v10',  v10  ! 10 m wind v-component
+   print *,' precip',precip! freshwater precipitation (m/s)
+   print *,' cloud',cloud ! cloud cover
+   print *,' TSS ',  TSS   ! sea surface temperature
+   print *,' SSS ',  SSS  ! sea surface salinity
+   print *,'rhowater', rhowater  ! sea surface layer density --> called rho(nlev) in new code
+   print *,' rho_0 ', rho_0 ! reference density --> from meanflow
+   print *,' longwave_radiation_method ',longwave_radiation_method! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
+   print *,' hum_method', hum_method ! method for humidity
+   print *,' fluxes_method', fluxes_method ! method for fluxes
 
+
+   print *,'ice_hi',ice_hi
+   print *,'ice_hs',ice_hs
+   print *,'hm',ice_uvic_hm
+   print *,'Tice(nilay+1)',Tice(nilay+1)
+   print *,'Cond(nilay)',Cond(nilay)
+   print *,'rhoCp(nilay)',rhoCp(nilay)
+   print *,'Sint(nilay+1) ',Sint(nilay+1) 
+   print *,'dzi(nilay)',dzi(nilay)
+   print *,'zi(nlmax)',zi(nlmax)
+   print *, 'Pari(nilay+1)',Pari(nilay+1)
+   print *,'Told(nilay+1)',Told(nilay+1)
+   print *,'Fh',Fh
+   print *,'Ff',Ff
+   print *,'Fs',Fs
+   print *,'Sicebulk',Sice_bulk
+   print *,'TopMelt',TopMelt
+   print *,'BotMelt', BotMelt
+   print *, 'TerMelt',TerMelt
+   print *,'TopGrowth',TopGrowth
+   print *,'BotGrowth',BotGrowth
+   print *,'Hmix',Hmix
+   print *,'Aice',Aice_i
+   print *,'Asnow',Asnow_i
+   print *,'Amelt',Amelt_i
+   print *,'swr_0',swr_0
+   print *,'precip_i',precip_i
+   print *,'sfall_i',sfall_i
+   print *, '-----------------------------------------------------------------------'
+   print *, '-----------------------------------------------------------------------'
 !-----------------------------------------------------------------------
-!#if 0
+#endif
+!
 !BOC
 !   LEVEL0 'do_ice_uvic'
 !  Calculate seawater freezing temperature
@@ -1009,6 +727,7 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 
 
  !-----------------------------------------------------------------------
+
 
 
  !      LEVEL1'therm1d'
@@ -1272,6 +991,7 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 !
 !
 !    LEVEL1'end therm1d'
+
 
 return
 
@@ -1775,7 +1495,7 @@ subroutine surfmelt(Ts,TopMelt)
 !-----------------------------------------------------------------------
 
 !      LEVEL1'surfmelt'
-
+  
 !
 !...Calculate flux divergence at surface. Note: Iceflux(1) is the downward
 !...positive heat flux defined at the centre of the uppermost layer
@@ -1933,7 +1653,9 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk),parameter        ::    toler=1.D-02 
 
 !-----------------------------------------------------------------------
-#if 0
+
+
+!#if 0
 !      LEVEL1'nr_iterate'
 !
 !
@@ -1947,7 +1669,6 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !
    Ts=Tice(1)
 
- 
 !
 !-----------------------------------------------------------------------------
 !--- Start initial Newton-Raphson iteration - do a maximum of 5 iterations ---
@@ -1966,7 +1687,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
       do l=1,nilay+1
          Tice(l)=Told(l)
       enddo
-!
+
 !......solve unsteady heat conduction equation to get new temperature profile 
 !......and bottom flux after one time step
       call therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,&
@@ -2206,7 +1927,8 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 
 return
 
-#endif
+!#endif
+
 end subroutine nr_iterate 
 
 !-----------------------------------------------------------------------

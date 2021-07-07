@@ -144,7 +144,7 @@
    LEVEL2 'done.'
 allocate(Tice(2))
 
-
+#ifdef STIM_FLATO
    allocate(ice_uvic_Tice(nilay+1),stat=rc)
    if (rc /= 0) STOP 'init_ice: Error allocating (ice_uvic_Tice)'
    ice_uvic_Tice=0
@@ -198,7 +198,7 @@ allocate(Tice(2))
    ice_uvic_Aice=0;ice_uvic_Asnow=0 
    ice_uvic_Amelt=0 
 
-
+#endif
    return
    end subroutine init_stim_yaml
 !EOC
@@ -265,7 +265,7 @@ allocate(Tice(2))
       case(4)
 #if 1
 !KB         allocate(Tice(2))
-         call init_stim_flato(Ta)
+         call init_stim_flato()  !(ta)
 #else
          LEVEL0 "Flato model is compiled - but execution is disabled"
          LEVEL0 "change line 138 in gotm_stim.F90 - then recompile - "
@@ -393,12 +393,8 @@ allocate(Tice(2))
                           ice_uvic_topgrowth,ice_uvic_botgrowth,&
                           ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_Asnow,&
                           ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i)
-               !call do_ice_uvic(dz,dt,precip,julianday,secondsofday,longitude,latitude, &
-                                 !I_0,airt,airp,hum,u10,v10,cloud,sst,sss,rho,rho_0,longwave_radiation_method, &
-                                 !hum_method,fluxes_method,albedo,heat)
-                  
-                             !-------- this exists after the call to do_ice_uvic in the old code ??? -jp
-                                 !--- run code and add a brakpoint here to see when the code gets to this point 
+
+               
                      ice_uvic_ts=ice_uvic_Tice(1)
                      ice_uvic_tb=ice_uvic_Tice(nilay)
                      ice_uvic_parb=ice_uvic_Pari(nilay)
