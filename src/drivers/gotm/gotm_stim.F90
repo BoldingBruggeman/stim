@@ -377,7 +377,7 @@ allocate(Tice(2))
                !?? use dz or h(n) or h(nlev)
                call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
                           I_0,airt,airp,hum,u10,v10,precip,cloud, &
-                          Ta,S,rho,rho_0, &
+                          Tw,S,rho,rho_0, &
                           longwave_radiation_method,hum_method,fluxes_method,&
                           ice_hi,ice_hs,ice_uvic_hm,ice_uvic_Tice, &
                           ice_uvic_Cond,ice_uvic_rhoCp, &
