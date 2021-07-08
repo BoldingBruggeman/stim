@@ -373,10 +373,6 @@ allocate(Tice(2))
             LEVEL0 'Please select another ice model.'
             stop 'do_stim()'
          else
-            if (runwintonflato .eq. 1) then 
-               call do_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
-            
-            else
                !n = ubound(S,1)    !already set in gotm.F90 --> nlev ??? -jp
                !?? use dz or h(n) or h(nlev)
                call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
@@ -400,7 +396,6 @@ allocate(Tice(2))
                      ice_uvic_parb=ice_uvic_Pari(nilay)
                      ice_uvic_parui=ice_uvic_Pari(nilay+1)
         
-            end if 
          end if                    
 
    

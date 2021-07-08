@@ -1655,7 +1655,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !-----------------------------------------------------------------------
 
 
-!#if 0
+#if 0
 !      LEVEL1'nr_iterate'
 !
 !
@@ -1927,7 +1927,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 
 return
 
-!#endif
+#endif
 
 end subroutine nr_iterate 
 
