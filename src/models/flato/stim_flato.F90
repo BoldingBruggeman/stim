@@ -26,6 +26,7 @@ module stim_flato
    public                              :: do_ice_uvic 
 !
 ! !PRIVATE DATA MEMBERS:
+   !real(rk), pointer :: ice_hi,ice_hs  !jpnote 
 !
 !
 ! LOCAL VARIABLES: 
@@ -54,12 +55,12 @@ module stim_flato
 !    dti        - timestep in the ice model (usually set to ocean time step)
    real(rk) :: dti
 !
-!*****fluxes
-!   qb           - long wave back radiation (in-out) (W m-2)	
-   real(rk) :: qb
-!   qh           - latent heat flux into ice (W m-2)		
+!*****fluxes jpnote: added public to vars registered in registered_all_variables.F90
+  ! qb           - long wave back radiation (in-out) (W m-2)	
+   real(rk), public :: qb
+   !qh           - latent heat flux into ice (W m-2)		
    real(rk) :: qh
-!   qe           - sensible heat flux into ice (W m-2)		
+  ! qe           - sensible heat flux into ice (W m-2)		
    real(rk) :: qe
 !   tx,ty        - surface stress components in x and y direction (Pa)!check
    real(rk) :: tx,ty
@@ -147,6 +148,9 @@ subroutine init_stim_flato()
 !
    integer             :: k,rc     !from init_ice_uvic - jp 
 ! !LOCAL PARAMETERS:
+
+   !ice_hs => Hsnow
+   !ice_hi => Hice !jpnote 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -448,6 +452,12 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: ohflux !heat flux from ocean into ice underside (W m-2)
 !NSnote, not sure what evap is for
+   !print *,'in do_ice_uvic ice_uvic_zi',ice_uvic_zi
+   !for testing jpnote 
+   !print *,'Cond(nilay)',Cond(nilay)
+   !print *,'rhoCp(nilay)',rhoCp(nilay)
+   !print *,'Sint(nilay+1) ',Sint(nilay+1) 
+  ! print *,'dzi(nilay)',dzi(nilay)
 #if 0
    print *,' dto ', dto! ocean timestep (sec) ! dto ??? 
    !real(rk), intent(in)     :: dz !--> h from meanflow ???
@@ -507,6 +517,12 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
 !-----------------------------------------------------------------------
 #endif
 !
+
+! ------------------------------------ jpnote for testing 
+!call growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt,TopMelt,&
+!BotGrowth,BotMelt,Hmix,ohflux)
+! ------------------------------------
+!#if 0
 !BOC
 !   LEVEL0 'do_ice_uvic'
 !  Calculate seawater freezing temperature
