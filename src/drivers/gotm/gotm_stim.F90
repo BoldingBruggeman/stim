@@ -92,9 +92,8 @@
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
    call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
                    'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
-   !flato
-   call branch%get(runwintonflato, 'runwintonflato', 'run the winton model inside of flato', '', default=0)
-
+   
+   !flato 
    call branch%get(nilay, 'nilay', 'number of ice layers', '', default=0)
    !call branch%get(sfall_method, 'sfall_method', 'define how snow fall is determined ','', default=0, &
                  ! options=
@@ -365,7 +364,7 @@ allocate(Tice(2))
 #ifdef STIM_FLATO
       case(4)
        
-         if (S .lt. 0.01) then
+         if (0.eq.1) then  !jpnote: S .lt. 0.01
             LEVEL0 'The FLato ice model is developed for oceanic conditions.'
             LEVEL0 'Very low salinity is not supported - and the principle'
             LEVEL0 'advantage of the model (brine contribution to latent'
