@@ -363,8 +363,8 @@ allocate(Tice(2))
 #endif
 #ifdef STIM_FLATO
       case(4)
-       
-         if (0.eq.1) then  !jpnote: S .lt. 0.01
+      
+         if (S .lt. 0.01) then  !jpnote: S .lt. 0.01  0 .eq. 1
             LEVEL0 'The FLato ice model is developed for oceanic conditions.'
             LEVEL0 'Very low salinity is not supported - and the principle'
             LEVEL0 'advantage of the model (brine contribution to latent'
@@ -390,10 +390,10 @@ allocate(Tice(2))
                           ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i)
 
                
-                     ice_uvic_ts=ice_uvic_Tice(1)
-                     ice_uvic_tb=ice_uvic_Tice(nilay)
-                     ice_uvic_parb=ice_uvic_Pari(nilay)
-                     ice_uvic_parui=ice_uvic_Pari(nilay+1)
+               ice_uvic_ts=ice_uvic_Tice(1)
+               ice_uvic_tb=ice_uvic_Tice(nilay)
+               ice_uvic_parb=ice_uvic_Pari(nilay)
+               ice_uvic_parui=ice_uvic_Pari(nilay+1)
         
          end if                    
 
