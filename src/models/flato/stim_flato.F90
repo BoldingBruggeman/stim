@@ -58,10 +58,10 @@ module stim_flato
 !*****fluxes jpnote: added public to vars registered in registered_all_variables.F90
   ! qb           - long wave back radiation (in-out) (W m-2)	
    real(rk), public :: qb
-   !qh           - latent heat flux into ice (W m-2)		
+   !qe           - latent heat flux into ice (W m-2)		
+   real(rk) :: qe  !jpnote: switching qh and qe
+  ! qh           - sensible heat flux into ice (W m-2)		
    real(rk) :: qh
-  ! qe           - sensible heat flux into ice (W m-2)		
-   real(rk) :: qe
 !   tx,ty        - surface stress components in x and y direction (Pa)!check
    real(rk) :: tx,ty
 !   PenSW        - short wave radiation that penetrates the surface (W m-2)
@@ -391,7 +391,7 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(in)    :: rh    ! relative humidity --> is this the same as hum ??? 
    real(rk), intent(inout)  :: u10   ! 10 m wind u-component
    real(rk), intent(inout)  :: v10   ! 10 m wind v-component
-   real(rk), intent(inout)  :: precip! freshwater precipitation (m/s)
+   real(rk), intent(inout)  :: precip! freshwater precipitation (m/s) 
    real(rk), intent(in)     :: cloud ! cloud cover
    real(rk), intent(inout)  :: TSS     ! sea surface temperature
    real(rk), intent(in)     :: SSS     ! sea surface salinity
@@ -518,7 +518,11 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
 #endif
 !
 
+
 ! ------------------------------------ jpnote for testing 
+
+!print *, 'precip_', precip_ 
+
 !call growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt,TopMelt,&
 !BotGrowth,BotMelt,Hmix,ohflux)
 ! ------------------------------------
@@ -1468,8 +1472,11 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
       call humidity(hum_method,rh,airp,TTss-kelvin,airt)
       call longwave_radiation(longwave_radiation_method, &
                           lat,TTss,airt+kelvin,cloud,qb)     ! subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
-      call airsea_fluxes(fluxes_method,.false.,.false., &
-                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
+      call airsea_fluxes(fluxes_method, &
+                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  !jpnote: didnt switch - already in the right order
+
+                         !fluxes_method,.false.,.false., &
+                         !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
 
 ! evap is set to zero for now....as for ice_winton, not sure what it is...
       evap = 0
@@ -1479,11 +1486,11 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 !.... long wave flux
       fluxt=qb
 !
-!....sensible heat flux
-      fluxt=fluxt+qe
+!....sensible heat flux  !jpnote: switching qe and qh 
+      fluxt=fluxt+qh
 !
 !....latent heat flux
-      fluxt=fluxt+qh
+      fluxt=fluxt+qe
 !
 !
 !    LEVEL1'end sebudget'
