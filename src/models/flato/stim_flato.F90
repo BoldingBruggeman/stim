@@ -1,17 +1,56 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: stim_flato --- flato thermodynamic ice model
+! !MODULE: stim_flato --- Flato&Brown thermodynamic ice model
 ! \label{sec:stim_flato}
 !
 ! !INTERFACE
 module stim_flato
 !
 ! !DESCRIPTION:
+!!  This module is based on the 1-D thermodynamic sea ice model 
+!  (ONE_D_THERMOv1.0) by Greg Flato (Flato and Brown, 1996. JGR, 101(C10)) 
+!  and modified to fit the GOTM structure.
+!  It performs a surface energy budget calculation to get net flux at ice, 
+!  snow or open water surface, solves the 1-D heat conduction problem using 
+!  an implicit finite difference scheme with the ice/snow slab discretized 
+!  into an arbitrary number of thickness layers (presently configured for only 
+!  one snow layer). A Newton-Raphson iterative scheme is used to solve for the 
+!  surface temperature which appears non-linearly in both surface and 
+!  conductive fluxes. Surface melt is calculated to use up the net incoming 
+!  energy flux at the surface with the surface temperature fixed at the 
+!  melting point. Additional melt may occur to restore temperatures to the 
+!  freezing point where it is exceeded. Under cooling conditions, the upper 
+!  surface has a flux boundary condition with surface growth occuring only 
+!  if snowload causes surface flooding. Growth at the ice underside is 
+!  calculated so as to balance the flux at the bottom where the temperature 
+!  remains at the freezing point of sea water. If ice melts completely, 
+!  incoming heat is stored in the mixed layer {\sl fixed MLD in original code} 
+!  which must cool to the freezing point before new ice can form. Initial 
+!  growth of very thin ice is calculated assuming a linear temperature profile.
 !
+!  Further documentation is provided by comments in the code and headers
+!  in each subroutine.
+!-----------------------------------------------------------------------
+! original code written by Gregory M. Flato, Canadian Centre for Climate 
+! Modelling and Analysis, Environment Canada 
 !
+!  ver. 1.05 - G.Flato - 29/Oct/99   - last change before transfer to 
+!                                      implement module in GOTM
+!  ver. 2.0 - N.Steiner - Nov/08     - conversion to subroutine as 
+!                                      part of GOTM
+!  ver. 3.0 - N. Steiner - Jul/14    - recodng for gotm git structure
 !
-!
+!  ver. 3.1 - N. Steiner - Nov/14    - include saltflux from 
+!                                      Vancoppenolle et al 2009 - in prog.
+!  ver. 3.2 - N. Steiner - Nov/14    - correct heat transfer for open water 
+! ( remove double calc inside and outside the ice module, 
+! recorrect I_0 for ice case 
+!  ver. 3.3 - N. Steiner - Dec/14    - Implement Abraham et al. 2014 
+!                                 radiative transfers 
+!                                    - include functions for extinction 
+!                                      and transmissivity
+! 
 !
 ! !USES:
    use stim_variables
@@ -25,12 +64,8 @@ module stim_flato
    public                              :: init_stim_flato
    public                              :: do_ice_uvic 
 !
-! !PRIVATE DATA MEMBERS:
-   !real(rk), pointer :: ice_hi,ice_hs  !jpnote 
-!
 !
 ! LOCAL VARIABLES: 
-!
 !   rhosnow     - snow density (kg m-3)
    real(rk), public :: rhosnow
 
@@ -55,11 +90,11 @@ module stim_flato
 !    dti        - timestep in the ice model (usually set to ocean time step)
    real(rk) :: dti
 !
-!*****fluxes jpnote: added public to vars registered in registered_all_variables.F90
+!*****fluxes 
   ! qb           - long wave back radiation (in-out) (W m-2)	
    real(rk), public :: qb
    !qe           - latent heat flux into ice (W m-2)		
-   real(rk) :: qe  !jpnote: switching qh and qe
+   real(rk) :: qe                                        !jpnote: switching qh and qe
   ! qh           - sensible heat flux into ice (W m-2)		
    real(rk) :: qh
 !   tx,ty        - surface stress components in x and y direction (Pa)!check
@@ -80,8 +115,8 @@ module stim_flato
    real(rk) :: simasso
 !   snmasso      - ice mass per unit area at previous timestep (kg m-2) !snow mass? 
    real(rk) :: snmasso
-!   Ts           - upper surface temperature (K) ! jpnote - already declared for use in winton
-   real(rk) :: Ts_uvic
+!   Ts           - upper surface temperature (K)
+   real(rk) :: Ts
 !   Tsav         - average snow layer temperature (K)
    real(rk) :: Tsav  
    
@@ -133,8 +168,7 @@ module stim_flato
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_flato}
-!
+!IROUTINE: Initialise the uvic--ice model \label{sec:init-uvic-ice}
 ! !INTERFACE:
 !KB   subroutine init_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip)
 subroutine init_stim_flato() 
@@ -149,8 +183,6 @@ subroutine init_stim_flato()
    integer             :: k,rc     !from init_ice_uvic - jp 
 ! !LOCAL PARAMETERS:
 
-   !ice_hs => Hsnow
-   !ice_hi => Hice !jpnote 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -209,154 +241,11 @@ subroutine init_stim_flato()
    end if
 !return
 
-!-------------------------------------------------------------------------
-
-#if 0 
-   !printing Vars for Testing purposes
-   print *, '----------------------------------------------'
-   print *, 'public data members from ice_uvic'
-   print *, '----------------------------------------------'
-   print *, 'hlaymin', hlaymin
-   print *, 'rhoice',rhoice
-   print *, 'Tfreezi',Tfreezi
-   print *, 'rCpmix',rCpmix
-   print *, 'Hfi',Hfi
-   print *, 'hsmin',hsmin
-   print *, 'theta',theta
-   print *, 'sigma',sigma
-   print *, 'epsilon',epsilon
-   print *, 'PenFrac',PenFrac
-   print *, 'hlaymin',hlaymin
-   print *, 'rhoscold',rhoscold
-   print *, 'rhoswarm',rhoswarm
-   print *, 'rhowaterfresh',rhowaterfresh
-   print *, 'rhoice',rhoice
-   print *, 'kelvin',kelvin
-   print *, 'Tmelts',Tmelts
-   print *, 'Tmelti',Tmelti
-   print *, 'Condfi',Condfi
-   print *, 'rhoCpfi',rhoCpfi 
-   print *, 'rCpmix',rCpmix
-   print *, 'Hfi',Hfi
-   print *, 'Hfw',Hfw
-   print *, 'swkappa',swkappa
-   print *, 'freezi',Tfreezi
-   print *, 'nlmax',nlmax
-   print *, '----------------------------------------------'
-   print *, 'local Variables'
-   print *, '----------------------------------------------'
-   print *, 'rhosnow',rhosnow 
-   print *, 'Iceflux', Iceflux
-   print *, 'bctype', bctype
-   print *, 'bcs', bcs
-   print *, 'dti', dti
-   print *, 'qb', qb
-   print *, 'qh', qh
-   print *, 'qe', qe
-   print *, 'tx', tx
-   print *, 'ty', ty
-   print *, 'PenSW', PenSW
-   print *, 'fluxt', fluxt
-   print *, 'simass', simass
-   print *, 'snmass',  snmass
-   print *, 'simasso', simasso
-   print *, 'snmasso', snmasso
-   print *, 'Ts_uvic',  Ts_uvic
-   print *, 'Tsav', Tsav
-   print *, 'ice_salt', ice_salt
-   print *, 'sfall', sfall
-   print *, 'dfact', dfact
-   print *, 'depmix', depmix
-   print *, 'airtk', airtk
-   print *, 'C', C
-   print *, 'R', R
-   print *, 'dto', dto
-   print *, 'nslay', nslay
-   print *, 'Asnow', Asnow
-   print *, 'Aice', Aice
-   print *, 'hsmax',  hsmax
-   print *, 'meltmass', meltmass
-   print *, 'meltmasso', meltmasso
-   print *, 'pi', pi
-   print *, '----------------------------------------------'
-   print *, 'Yaml Variables'
-   print *, '----------------------------------------------'
-   print *, 'print nilay from yaml', nilay
-   print *, 'print sfall_method from yaml', sfall_method
-   print *, 'print const_sfall from yaml', const_sfall
-   print *, 'print dfact from yaml', dfact
-   print *, 'print depmix from yaml', depmix
-   print *, 'print sice_method from yaml', sice_method
-   print *, 'print dist_type from yaml', distr_type
-   print *, 'print snow_dist from yaml', snow_dist
-   print *, 'print const_Sice from yaml', const_Sice
-   print *, 'print meltpond from yaml', meltpond
-   print *, 'print Ameltmax from yaml', Ameltmax
-   print *, 'print drainrate from yaml', drainrate
-   print *, 'print hh0 from yaml', hh0
-   print *, 'print ice_hi_i from yaml', ice_hi_i
-   print *, 'print ice_hs_i from yaml', ice_hs_i
-   print *, 'print albice_method from yaml', albice_method
-   print *, 'print albice_f from yaml', albice_f
-   print *, 'print albmelt from yaml', albmelt
-   print *, 'print albsnow_f from yaml', albsnow_f
-   print *, 'print albice_m from yaml', albice_m
-   print *, 'print albsnow_m from yaml', albsnow_m
-   print *, 'print transsf from yaml', transsf
-   print *, 'print transsm  from yaml', transsm 
-   print *, 'print swkappasm from yaml', swkappasm
-   print *, 'print swkappasf from yaml', swkappasf
-   print *, 'print swkappaim from yaml',  swkappaim
-   print *, 'print  swkappaif  from yaml',  swkappaif 
-   print *, '----------------------------------------------'
-   print *, 'ice.F90 vars'
-   print *, '----------------------------------------------'
-   print *, ''
-   print *, 'ice_uvic_dum', ice_uvic_dum
-   print *,'hsnow', hsnow
-   print *,'hice', hice
-   print *,'ice_uvic_hm', ice_uvic_hm
-   print *,'ice_uvic_ts', ice_uvic_ts
-   print *,'ice_uvic_tb', ice_uvic_tb
-   print *,'ice_uvic_Fh', ice_uvic_Fh
-   print *, 'ice_uvic_Ff ',ice_uvic_Ff 
-   print *, 'ice_uvic_Fs',ice_uvic_Fs
-   print *,'ice_uvic_swr_0', ice_uvic_swr_0
-   print *,'ice_uvic_precip_i', ice_uvic_precip_i
-   print *,'ice_uvic_sfall_i', ice_uvic_sfall_i
-   print *, 'ice_uvic_parb', ice_uvic_parb
-   print *,'ice_uvic_parui', ice_uvic_parui
-   print *,'ice_uvic_Ff',ice_uvic_Ff
-   print *,'ice_uvic_Fs',ice_uvic_Fs
-   print *,'ice_uvic_Sicebulk',ice_uvic_Sicebulk
-   print *,'ice_uvic_topmelt',ice_uvic_topmelt
-   print *,'ice_uvic_botmelt',ice_uvic_botmelt
-   print *,'ice_uvic_termelt',ice_uvic_termelt
-   print *,'ice_uvic_topgrowth',ice_uvic_topgrowth
-   print *,'ice_uvic_botgrowth',ice_uvic_botgrowth
-   print *,'ice_uvic_Hmix',ice_uvic_Hmix
-   print *,' ice_uvic_Aice', ice_uvic_Aice
-   print *, 'ice_uvic_Asnow', ice_uvic_Asnow
-   print *, 'ice_uvic_Amelt',ice_uvic_Amelt
-   print *, 'ice_uvic_Tice ',ice_uvic_Tice 
-   print *, 'Tice', Tice
-   print *, 'Tice(nilay)', Tice(nilay)
-   print *, 'ice_uvic_Cond',ice_uvic_Cond
-   print *, 'ice_uvic_rhoCp ',ice_uvic_rhoCp 
-   print *, 'ice_uvic_Sint',ice_uvic_Sint
-   print *, 'ice_uvic_dzi ',ice_uvic_dzi 
-   print *, 'ice_uvic_zi ',ice_uvic_zi 
-   print *, 'ice_uvic_Told ',ice_uvic_Told 
-   print *, 'ice_uvic_Pari',ice_uvic_Pari
-   print *, 'ice_uvic_dzice',ice_uvic_dzice
-   print *, 'ice_uvic_zice',ice_uvic_zice
-   print *, ''
-
-#endif 
 
    return
-!EOC
+
 end subroutine init_stim_flato
+!EOC
 
 !-----------------------------------------------------------------------
 
@@ -372,32 +261,46 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                         ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                         Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                         TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i)
+! !DESCRIPTION:
+!  Update the sea-ice conditions: if no ice, call open_water and determine 
+!  new ice growth, if ice exists calculate growth or melt. The model has 
+!  nilay ice layers and one snow layer.  
+!  This subroutine updates the sea ice prognostic variables. The updated
+!  variables are ice_hi, ice_hs,ice_hm, Tice(nilay+1), Cond(nilay),rhoCp(nilay), 
+!  Sint(nilay+1), dzi(nilay), zi(nilay+1), Told(nilay+1),ts,alb, heat 
+!  melt and growth terms per timestep are transferred out for potential use in 
+!  ice algae model: TopMelt,BotMelt,TerMelt,TopGrowth,BotGrowth, note these are 
+!  not accumulated over the run as in the original code from GF
+
+
+! !REVISION HISTORY:
+!  Original author(s): Nadja Steiner, modified from ice_thermo by Greg Flato
+!  based on GOTM template
 ! !USES:
    implicit none
 !
 ! !INPUT PARAMETERS:
-   real(rk), intent(in)     :: dto ! ocean timestep (sec) ! dto ??? 
-   !real(rk), intent(in)     :: dz !--> h from meanflow ???
-   real(rk), intent(in)    :: h  ! sea surface layer thickness --> is this the same as dz ???
-   
-   integer, intent(in)     :: julianday ! this julian day --> from time
-   integer, intent(in)     :: secondsofday ! seconds for this day -->  from time
-   real(rk), intent(in)    :: lon    ! longitude for this point --> longitude from gotm
-   real(rk), intent(in)    :: lat ! latitude for this point --> latitude from gotm 
+   real(rk), intent(in)     :: dto ! ocean timestep (sec) 
+   !real(rk), intent(in)     :: dz !--> h from meanflow jpnote - 
+   real(rk), intent(in)    :: h  ! sea surface layer thickness 
+   integer, intent(in)     :: julianday ! this julian day 
+   integer, intent(in)     :: secondsofday ! seconds for this day 
+   real(rk), intent(in)    :: lon    ! longitude for this point 
+   real(rk), intent(in)    :: lat ! latitude for this point 
    real(rk), intent(inout)  :: I_0   ! shortwave radiation at sea surface  
    real(rk), intent(in)     :: airt  ! 2m temperature
    real(rk), intent(in)     :: airp  ! sea surface pressure
-   !real(rk), intent(in)     :: hum   ! relative humidity from airsea
-   real(rk), intent(in)    :: rh    ! relative humidity --> is this the same as hum ??? 
+   !real(rk), intent(in)     :: hum   ! relative humidity from airsea  - jpnote
+   real(rk), intent(in)    :: rh    ! relative humidity 
    real(rk), intent(inout)  :: u10   ! 10 m wind u-component
    real(rk), intent(inout)  :: v10   ! 10 m wind v-component
    real(rk), intent(inout)  :: precip! freshwater precipitation (m/s) 
    real(rk), intent(in)     :: cloud ! cloud cover
    real(rk), intent(inout)  :: TSS     ! sea surface temperature
    real(rk), intent(in)     :: SSS     ! sea surface salinity
-   real(rk), intent(in)      :: rhowater   ! sea surface layer density --> called rho(nlev) in new code
-   real(rk), intent(in)      :: rho_0 ! reference density --> from meanflow
-   integer, intent(in)       :: longwave_radiation_method ! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
+   real(rk), intent(in)      :: rhowater   ! sea surface layer density 
+   real(rk), intent(in)      :: rho_0 ! reference density 
+   integer, intent(in)       :: longwave_radiation_method ! method for LW  
    integer, intent(in)       :: hum_method ! method for humidity
    integer, intent(in)       :: fluxes_method ! method for fluxes
     
@@ -452,81 +355,7 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: ohflux !heat flux from ocean into ice underside (W m-2)
 !NSnote, not sure what evap is for
-   !print *,'in do_ice_uvic ice_uvic_zi',ice_uvic_zi
-   !for testing jpnote 
-   !print *,'Cond(nilay)',Cond(nilay)
-   !print *,'rhoCp(nilay)',rhoCp(nilay)
-   !print *,'Sint(nilay+1) ',Sint(nilay+1) 
-  ! print *,'dzi(nilay)',dzi(nilay)
-#if 0
-   print *,' dto ', dto! ocean timestep (sec) ! dto ??? 
-   !real(rk), intent(in)     :: dz !--> h from meanflow ???
-   print *,' h ', h ! sea surface layer thickness --> is this the same as dz ???
-   
-   print *,'julianday',julianday ! this julian day --> from time
-   print *,'secondsofday',secondsofday ! seconds for this day -->  from time
-   print *,'lon',  lon   ! longitude for this point --> longitude from gotm
-   print *,'lat ',lat! latitude for this point --> latitude from gotm 
-   print *,'I_0',  I_0  ! shortwave radiation at sea surface  
-   print *,' airt', airt ! 2m temperature
-   print *,'airp', airp  ! sea surface pressure
-   !real(rk), intent(in)     :: hum   ! relative humidity from airsea
-   print *,' rh', rh    ! relative humidity --> is this the same as hum ??? 
-   print *,' u10 ', u10  ! 10 m wind u-component
-   print *,'v10',  v10  ! 10 m wind v-component
-   print *,' precip',precip! freshwater precipitation (m/s)
-   print *,' cloud',cloud ! cloud cover
-   print *,' TSS ',  TSS   ! sea surface temperature
-   print *,' SSS ',  SSS  ! sea surface salinity
-   print *,'rhowater', rhowater  ! sea surface layer density --> called rho(nlev) in new code
-   print *,' rho_0 ', rho_0 ! reference density --> from meanflow
-   print *,' longwave_radiation_method ',longwave_radiation_method! method for LW   !read in from namelist in airsea --> defined as a local variable in airsea
-   print *,' hum_method', hum_method ! method for humidity
-   print *,' fluxes_method', fluxes_method ! method for fluxes
-
-
-   print *,'ice_hi',ice_hi
-   print *,'ice_hs',ice_hs
-   print *,'hm',ice_uvic_hm
-   print *,'Tice(nilay+1)',Tice(nilay+1)
-   print *,'Cond(nilay)',Cond(nilay)
-   print *,'rhoCp(nilay)',rhoCp(nilay)
-   print *,'Sint(nilay+1) ',Sint(nilay+1) 
-   print *,'dzi(nilay)',dzi(nilay)
-   print *,'zi(nlmax)',zi(nlmax)
-   print *, 'Pari(nilay+1)',Pari(nilay+1)
-   print *,'Told(nilay+1)',Told(nilay+1)
-   print *,'Fh',Fh
-   print *,'Ff',Ff
-   print *,'Fs',Fs
-   print *,'Sicebulk',Sice_bulk
-   print *,'TopMelt',TopMelt
-   print *,'BotMelt', BotMelt
-   print *, 'TerMelt',TerMelt
-   print *,'TopGrowth',TopGrowth
-   print *,'BotGrowth',BotGrowth
-   print *,'Hmix',Hmix
-   print *,'Aice',Aice_i
-   print *,'Asnow',Asnow_i
-   print *,'Amelt',Amelt_i
-   print *,'swr_0',swr_0
-   print *,'precip_i',precip_i
-   print *,'sfall_i',sfall_i
-   print *, '-----------------------------------------------------------------------'
-   print *, '-----------------------------------------------------------------------'
-!-----------------------------------------------------------------------
-#endif
-!
-
-
-! ------------------------------------ jpnote for testing 
-
-!print *, 'precip_', precip_ 
-
-!call growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt,TopMelt,&
-!BotGrowth,BotMelt,Hmix,ohflux)
-! ------------------------------------
-!#if 0
+! 
 !BOC
 !   LEVEL0 'do_ice_uvic'
 !  Calculate seawater freezing temperature
@@ -691,11 +520,24 @@ dti=dto
 end subroutine do_ice_uvic 
 ! EOC
 !-----------------------------------------------------------------------
+! put any internal subroutines below here
+!-----------------------------------------------------------------------
 
-
-
+!BOP
+! !IROUTINE: 
+!
+! !INTERFACE:
 subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)   
-   !nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
+   
+! !DESCRIPTION:
+!
+!  Subroutine to calculate heat conduction through a 1-dimensional slab 
+!  of sea ice of a given thickness for specified boundary conditions.
+!  Parameterization of conductivity and heat capacity follows closely
+!  that of Ebert and Curry (J. Geophys. Res.,98:10085-10109, 1993) and
+!  uses a generalized Crank-Nicholson or implicit algorithm to solve the 
+!  1-dimensional heat conduction problem.
+
 ! !USES:
    
    IMPLICIT NONE 
@@ -715,6 +557,13 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 ! !INOUT PARAMETERS:
    real(rk),intent(inout)  :: Tice(nilay+1)
    real(rk),intent(inout)  :: Sice_bulk
+
+!
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+
 !
 !BOC
 ! !LOCAL VARIABLES:
@@ -745,7 +594,7 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 !   hzero   - minimum ice thickness to avoid dividing by zero elsewhere in code
    real(rk), parameter           :: hzero=1.D-03
 
-
+!EOP
  !-----------------------------------------------------------------------
 
 
@@ -1012,21 +861,41 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 !
 !    LEVEL1'end therm1d'
 
-
 return
-
-
-
 
 end subroutine therm1d
 
-!-----------------------------------------------------------------------
+!EOC!-----------------------------------------------------------------------
 
+!BOP
 ! !IROUTINE: 
 !
 ! !INTERFACE:
 subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
-   !bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to solve 1-dimensional heat diffusion equation using a 
+!  generalized Crank-Nicholson or implicit algorithm which allows
+!  arbitrary spacing of layers and spatially varying diffusion
+!  coefficients. Parameter 'theta' determines whether standard
+!  Crank-Nicholson or implicit algorithm is used.
+!
+!
+!  sketch of grid layout:
+!
+!                          dzi(i-1)       dzi(i)
+!                    ----+---------+--------------+-----
+!                      Tice(i-1)     Tice(i)         Tice(i+1)
+!                         Cond(i-1)      Cond(i)
+!                         rhoCp(i-1)    rhoCp(i)
+!                    rCpav(i-1)  rCpav(i)    rCpav(i+1)
+!
+!  NOTE: minimum number of layers is 2 (this is required so that flux
+!        boundary conditions can be specified at both boundaries).
+!*************************************************************************
+! 
 ! !USES:
    IMPLICIT NONE
 
@@ -1037,6 +906,12 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
    real(rk), intent(in)        :: Sint(nilay+1)
 ! !INOUT PARAMETERS:
    real(rk), intent(inout)        :: Tice(nilay+1)
+
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!BOC
 ! !LOCAL VARIABLES:
 ! coefficients for tridiagonal matrix
    real(rk)                  ::      C(nlmax+1,3)
@@ -1048,8 +923,8 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
    real(rk)                  ::      To(nlmax+1)     
    integer                   ::      j,l
 
-
- !-----------------------------------------------------------------------
+!EOP
+!-----------------------------------------------------------------------
 
 !      LEVEL1'cndiffus'
 !
@@ -1166,21 +1041,40 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
 return
 
 end subroutine cndiffus
+!EOC!-----------------------------------------------------------------------
 
-
-!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: 
+!
+! !INTERFACE:
 subroutine trisol(C,R,n,Tice)
+!
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to solve tri-diagonal matrix. Based on algorithm
+!  described in Press et al. ("Numerical Recipies", Cambridge
+!  University Press, 1986, pp. 40-41).
 
+!*************************************************************************
+! 
 ! !USES:
    IMPLICIT NONE
 
-   ! !INPUT PARAMETERS:
+! !INPUT PARAMETERS:
    real(rk), intent(in)        :: C(nlmax+1,3)
    real(rk), intent(in)        :: R(nlmax+1)
 !       n -  size of system of equations
-   integer, intent(in)         :: n   !--> corresponds to nilay+1 
+   integer, intent(in)         :: n   
+! !INOUT PARAMETERS:
    real(rk), intent(inout)     :: Tice(n)
 
+
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
 ! !LOCAL VARIABLES:
 ! coefficients for 
    integer,parameter         :: nmax=100
@@ -1189,7 +1083,8 @@ subroutine trisol(C,R,n,Tice)
    real(rk)                  :: temp(nmax)
    integer                   :: j  
 
-   !-----------------------------------------------------------------------
+!EOP
+!-----------------------------------------------------------------------
 
 !      LEVEL1'trisol'
 
@@ -1241,12 +1136,26 @@ return
 
 
 end subroutine trisol
-!-----------------------------------------------------------------------
+!EOC!-----------------------------------------------------------------------
 
+!BOP
+!
+! !IROUTINE: 
+!
+! !INTERFACE:
 subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
                      TopMelt,BotGrowth,BotMelt,Hmix,ohflux)
-
- ! !USES:
+!
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to calculate growth or melt at the top and bottom of a 
+!  1-dimensional slab of snow/sea ice given the calculated surface and 
+!  bottom fluxes. Also checks for submergence of ice surface and forms
+!  'snow ice' if neccessary.
+!*************************************************************************
+! 
+! !USES:
    IMPLICIT NONE
 !
 !INPUT PARAMETERS:
@@ -1259,9 +1168,13 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
 !INOUT PARAMETERS:
       real(rk), intent(inout)   :: BotGrowth,BotMelt
       real(rk), intent(inout)   :: TopGrowth,TerMelt,TopMelt,Hmix
-      real(rk), intent(inout)   :: Tice(nilay+1)                    
-
-
+      real(rk), intent(inout)   :: Tice(nilay+1)    
+!                      
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!BOC
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                  ::  dhib,dhst,dhs,dhi,Ts
@@ -1274,8 +1187,8 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
    real(rk)                 ::  porewat   
    integer                   ::  k  
 
-
- !-----------------------------------------------------------------------
+!EOP
+!-----------------------------------------------------------------------
 
 !      LEVEL1'growthtb'
 !
@@ -1433,11 +1346,30 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
 
 end subroutine growthtb
 
-!-----------------------------------------------------------------------
+!EOC!-----------------------------------------------------------------------
 
+!BOP
+!
+! !IROUTINE: 
+!
+! !INTERFACE:
 subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
                      TTss,airt,rh,cloud,ice_hi,ice_hs,&
                      lat,u10,v10,precip,airp,evap)
+!
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to calculate surface energy budget. Includes calculation of 
+!  surface fluxes from meteorological forcing data. 
+!  NSnote: replaced original call fluxform,which calculated humidity,
+!        sensible, latent and incoming longwave heat flux with gotm call 
+!        sequence: humidity, back_radiation, airsea_fluxes - this also meant 
+!        calling airt, rather than airtk in sebudget and hence open_water 
+!        and nr_iterate and the transfer of extra variables, e.g. methods 
+
+!*************************************************************************
+! 
 ! !USES:
    IMPLICIT NONE
 !
@@ -1454,9 +1386,14 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
       real(rk), intent(inout)   :: precip! freshwater precipitation (m/s)
       real(rk), intent(inout)   :: evap! freshwater evaporation (m/s)
       real(rk), intent(inout)   :: ice_hi,ice_hs
-! !REVISION HISTORY:
 
-      ! !LOCAL VARIABLES:
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!BOC
+! !LOCAL VARIABLES:
+
 !EOP
 !-----------------------------------------------------------------------
 !      LEVEL1'sebudget'
@@ -1473,7 +1410,7 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
       call longwave_radiation(longwave_radiation_method, &
                           lat,TTss,airt+kelvin,cloud,qb)     ! subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
       call airsea_fluxes(fluxes_method, &
-                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  !jpnote: didnt switch - already in the right order
+                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  !jpnote: didnt switch qe, qh - already in the right order
 
                          !fluxes_method,.false.,.false., &
                          !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
@@ -1499,22 +1436,45 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 
 end subroutine sebudget
 
-!-----------------------------------------------------------------------
+!EOC!-----------------------------------------------------------------------
 
+!BOP
+!
+! !IROUTINE: 
+!
+! !INTERFACE:
 subroutine surfmelt(Ts,TopMelt)
 
-   real(rk), intent(in)  :: Ts  !Tice(1)
-   real(rk)              :: hmeltinput !???
+! !DESCRIPTION:
+!
+!*************************************************************************
+!  Subroutine to calculate melt from flux divergence at surface. Available
+!  energy is first used to melt snow, and when snow has disappeared,
+!  remaining energy is used to melt ice. 
+!*************************************************************************
+! 
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   real(rk), intent(in)  :: Ts  
+   real(rk)              :: hmeltinput 
 
 ! !OUTPUT PARAMETERS:
 
 ! !INOUT PARAMETERS:
    real(rk), intent(inout) :: TopMelt
 
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!BOC
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                 ::   Fdiv,dmsw,dmi,Fdivice,Fdivsnow  
 
+!EOP
 !-----------------------------------------------------------------------
 
 !      LEVEL1'surfmelt'
@@ -1617,25 +1577,6 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !  allows a longer time step to be taken.
 !*************************************************************************
 
-   !hum_method,back_radiation_method,fluxes_method,&
-   !nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
-   !Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-   !lat,u10,v10,precip,airp,evap,alb)
-
-   !Told -> ice_uvic_Told     Told(nilay+1)
-   !Tice -> ice_uvic_Tice     Tice(nilay+1)
-   !Pari -> ice_uvic_Pari     Pari(nilay+1)
-   !Sice_bulk -> ice_uvic_Sicebulk
-   !ice_hi -> hice
-   !ice_hs -> hsnow
-   !dzi -> ice_uvic_dzi      dzi(nilay)
-   !Cond -> ice_uvic_cond     Cond(nilay)
-   !rhoCp -> ice_uvic_rhoCp    rhoCp(nilay) 
-   !!zi -> ice_uvic_zi        zi(nilay+1)
-   ! Sint -> ice_uvic_sint    Sint(nilay+1)
-   !lat -> latitude
-   !alb -> labedo 
-   !rh --> hum 
 
 ! !USES:
    IMPLICIT NONE
@@ -1666,7 +1607,13 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
    real(rk), intent(inout)     :: evap! freshwater evaporation (m/s)
 
-
+!
+! !REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!
+!BOC
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                 ::    fTs,dTemp,Tsp,fTsdT1,fTsdT2
@@ -1674,11 +1621,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk)                  ::    dTs,Tsu,fTsu,Ts2,Tsm,fTsm,fTsl, Tsl,Ts  
    integer                   ::    nrit,ksearch,kb_uvic,l     !jpnote renamed kb 
    real(rk),parameter        ::    toler=1.D-02 
-
+!EOP
 !-----------------------------------------------------------------------
 
 
-!#if 0
 !      LEVEL1'nr_iterate'
 !
 !
@@ -1950,39 +1896,64 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 
 return
 
-!#endif
-
 end subroutine nr_iterate 
 
-!-----------------------------------------------------------------------
+!EOC!-----------------------------------------------------------------------
 
+!BOP
+!
+! !IROUTINE: 
+!
 ! !INTERFACE:
 subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
-
+!
+! !DESCRIPTION:
+!
+!*************************************************************************
+! Subroutine to calculate surface energy budget and subsequent change
+! in mixed layer heat content under open water conditions. If mixed
+! layer temperature falls below freezing, ice is formed.
+! 
+! Check, I am not sure if this is necessary with the GOTM ocean model running, 
+! but keep for now to see what is done and make sure adjustements are done 
+! appropriately in GOTM NSt Dec 2008
+!
+! Subroutine modified from the Flato and Brown (1986) model only to check 
+! whether ice must be created in the case the sea surface temperature 
+! [TSS from GOTM] is at the freezing point. In this case some ice 
+! mass is added in this routine
+!*************************************************************************
+! 
 ! !USES:                 
    IMPLICIT NONE
 ! !INPUT PARAMETERS:
    integer,intent(in)   :: nilay
-   real(rk),intent(in) :: hSS !--> [[ depmix ]] just named something different when passed to subroutine 
+   real(rk),intent(in) :: hSS 
 !INOUT PARAMETERS
    real(rk), intent(inout) :: Sice_bulk
    real(rk), intent(inout) :: Hmix
    real(rk), intent(inout) :: Tice(nilay+1)
    real(rk), intent(inout) :: Fh ! interface heat flux (W/m2)
-   real(rk), intent(inout) :: TSS ! ocean surface temperature (C)   ! sea surface temperature
+   real(rk), intent(inout) :: TSS ! ocean surface temperature (C)  
    real(rk), intent(inout) :: I_0
    real(rk), intent(inout) :: heat
    real(rk), intent(in)    :: precip !H!
    real(rk), intent(out)   :: precip_i !H!
+
+!REVISION HISTORY:
+!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!                                          Climate Modelling and Analysis
+!
+!BOC
 ! !LOCAL VARIABLES:
 ! coefficients for 
    real(rk)                  ::  Tmix,dmsi
    real(rk)                  ::  Sni   ! Sni - salinity of new ice
    integer                   ::  k,cont,i
 
-   !print *, 'open_water vars', hSS, I_0, heat, precip, Tmix, dmsi, Sni, k, cont, i
-
-
+!EOP
+!-----------------------------------------------------------------------
    !LEVEL1'open_water'
    !
    !
@@ -2056,44 +2027,64 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
          precip_i=precip !H!
       
       return
-
 end subroutine open_water
 
+!EOP
 !-----------------------------------------------------------------------
-!call saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
-!rhoice,rhosnow,rhowater,rhowaterfresh,zi,Tice,Sice_bulk,Ff,Fs, &
- !TopGrowth,BotGrowth,TopMelt,BotMelt,TerMelt)
+!BOP
+!
+! !IROUTINE: ice salinity profile for the sea-ice model
+!
+! !INTERFACE:
 subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
                                  rhoice,rhosnow,rhow,rhof,zi,Tice,Sice_bulk,Ff,Fs, &
                                  higs,higb,himb,hims,himi)
-  
+!DESCRIPTION:
+! Simplified parameterization for calculating the ice profile based on 
+! Vancoppenolle et al. 2009 Ocean Modelling 27, p33-53
+! In this model, the ice profile shape is calculated based
+! on intervals for the ice bulk salinity (salinity averaged
+! in the ice slab). It includes predominantly seasonal effects
+! controlling ice salt concentration and profile: "gravity
+! drainage" during the winter and "flushing" during the summer.
+! Also considers brine entrapment during ice growth and
+! snow ice formation due to snow depression.
+
 ! !USES:
 
    IMPLICIT NONE
 
-   !INPUT PARAMETERS:
-      
-      integer, intent(in)  :: nilay
-      real(rk), intent(in) :: rhow,rhof,dti
-      real(rk), intent(in) :: rhoice,rhosnow
-      real(rk), intent(in) :: SSS
-      real(rk), intent(in) :: Tice(nilay+1)
-      real(rk), intent(in) :: zi(nilay+1)
-      real(rk), intent(in) :: simasso,snmasso,meltmasso
-      real(rk), intent(inout) :: Sice_bulk
-      real(rk), intent(out) :: Fs,Ff  
+!INPUT PARAMETERS:
+   
+   integer, intent(in)  :: nilay
+   real(rk), intent(in) :: rhow,rhof,dti
+   real(rk), intent(in) :: rhoice,rhosnow
+   real(rk), intent(in) :: SSS
+   real(rk), intent(in) :: Tice(nilay+1)
+   real(rk), intent(in) :: zi(nilay+1)
+   real(rk), intent(in) :: simasso,snmasso,meltmasso
+   real(rk), intent(inout) :: Sice_bulk
+   real(rk), intent(out) :: Fs,Ff  
 ! Partitionated growth/melt ice (thicknesses time-step diff in m):
 ! higs - thickness of ice grown at surface (snow-ice formation, from TopGrowth)
 ! higb - thickness of ice grown at bottom (abblation, from Botgrowth)
 ! hims - thickness of ice melt surface (snow+ice, from TopMelt)
 ! himb - thickness of ice melt bottom (from BotMelt)
 ! himi - thickness of ice melt internal (internal ice melting, from TerMelt)
-      real(rk), intent(in) :: higs,higb,himb,hims,himi
+   real(rk), intent(in) :: higs,higb,himb,hims,himi
+!OUTPUT PARAMETERS:
+
+!
+! !REVISION HISTORY:
+!  Original author(s): U.Skielka - Aug 08, 2010
+!   revised N. Steiner Nov 2014
+!
          
 ! !LOCAL VARIABLES:
-      logical               ::   first=.true.
-      integer               ::   k
-      real(rk)             ::   V,f=0,ratei,rates,alpha
+   logical               ::   first=.true.
+   integer               ::   k
+   real(rk)             ::   V,f=0,ratei,rates,alpha
+
 ! Salinity local variables [ppt]:
 ! So -  old timestep bulk salinity
 ! Ssi - salinity in the ice formed from snow depression
@@ -2103,165 +2094,173 @@ subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
 ! S2  - second salinity transition
 ! Szero - linear salinity profile
 !
-      real(rk)                    ::   So,Ssi
-      real(rk),dimension(nilay+1) ::   Szero, Sice
-      real(rk), parameter          ::   Sg=5.D+00,Sfl=2.D+00
-      real(rk),parameter          ::   S1=3.5D+00,S2=4.5D+00
+   real(rk)                    ::   So,Ssi
+   real(rk),dimension(nilay+1) ::   Szero, Sice
+   real(rk), parameter          ::   Sg=5.D+00,Sfl=2.D+00
+   real(rk),parameter          ::   S1=3.5D+00,S2=4.5D+00
 ! Tg, Tfl - V09 time scales for gravity drainage (20 days) and
 ! summer flushing (10 days) [sec]
 !
-      real(rk), parameter    :: Tg=1728000,Tfl=864000
+   real(rk), parameter    :: Tg=1728000,Tfl=864000
 
 ! Terms of the salinity conservation equation [ppt]
 !
-      real(rk)             ::   x1,x2,x3,x4
+   real(rk)             ::   x1,x2,x3,x4
    
 ! Terms for the equivalent salt flux equation
-      real(rk)              ::   xx1,xx2,xx3,xx4
+   real(rk)              ::   xx1,xx2,xx3,xx4
    
 ! Terms for salt and freshwater surface flux
 ! Ff - freshwater flux [kg m-2 s-1]
 ! Fs - Total surface salt flux (Fs=Fb+Feq) [ppt m s-1 kg m-3] 
 ! Fb - brine drainage []
 ! Feq - equivalent salt flux due to growth/melt sea ice processes [ppt m s-1 kg m-3]
-      real(rk)              ::   Fb,Feq
+   real(rk)              ::   Fb,Feq
 
 !-----------------------------------------------------------------------
 !BOC
-      ssi=0
-      !get old time step bulk salinity
-      !
-         So=Sice_bulk
+   ssi=0
+!get old time step bulk salinity
+!
+   So=Sice_bulk
       
-      !...convert rate of mass to thickness
-      !
-         ratei=(simass-simasso)/dti
-         V = ratei/rhoice          !ice thickness change in m
-      
-      !Ice salinity conservation equation terms:
-      !...brine entrapment during ice growth
-      !...get the fractionation coefficient (Cox and Weeks, 1988)
-      !    
-           
-              f=0.12D+00
-         if(higb .gt. 0) then
-           if(V .gt. 3.6e10-7) then
-              f=0.26D+00/(0.26D+00+0.74D+00*exp(-724300D+00*V)) !V in m
-           end if
+!...convert rate of mass to thickness
+!
+      ratei=(simass-simasso)/dti
+      V = ratei/rhoice          !ice thickness change in m
+   
+!Ice salinity conservation equation terms:
+!...brine entrapment during ice growth
+!...get the fractionation coefficient (Cox and Weeks, 1988)
+!    
          
-           if(V .lt. 3.6e-7 .and. V .gt. 2e-8) then
-              f=0.8925D+00+0.0568D+00*log(100.D+00*V)
-           end if
-      
-      
-           x1=(higb)*(f*SSS-So)/(simass/rhoice)     !NSnote fixed units 
-         else
-           x1=0
+            f=0.12D+00
+      if(higb .gt. 0) then
+         if(V .gt. 3.6e10-7) then
+            f=0.26D+00/(0.26D+00+0.74D+00*exp(-724300D+00*V)) !V in m
          end if
       
-      !...brine entrapment during snow ice formation
-      !...calculate if snow ice has been created
-      !
-         if(higs .gt. 0.D+00 .and. simass .gt. 0) then
-           Ssi=(rhoice-rhosnow)*SSS/rhoice
-           x2=(max(0.D+00,higs))*((Ssi-So)/(simass/rhoice)) 
-         else
-           x2=0
+         if(V .lt. 3.6e-7 .and. V .gt. 2e-8) then
+            f=0.8925D+00+0.0568D+00*log(100.D+00*V)
          end if
-      
-      !...gravity drainage term
-         if(Tice(nilay+1) .gt. Tice(2)) then  !only if dT/dz < 0
-            x3=-((So-Sg)/Tg)*dti       !decreases Sice_bulk
-         else
-            x3=0
-         endif
-      
-      !...flushing term
-         if(hims .gt. 0.0D+00) then
-           x4=-((So-Sfl)/Tfl)*dti      !decreases Sice_bulk
-         else
-           x4=0
-         end if
-      
-      !Get time-step ice bulk salinity!
-      !
-         Sice_bulk=So+x1+x2+x3+x4 !NSnote unit inconsistency x1,x2 - fixed
-      !Get time-step salinity profile, which depends on the bulk salinity
-      !
-      !...get the ice salinity linear profile to be used in the cases of
-      !...constrained from 0 ppt at the surface to the bulk salinity (Sice_bulk)
-      !
-         if(simass .gt. 0) then
-           do k=1,nilay+1
-             Szero(k) = Sice_bulk*zi(k)/(simass/rhoice)
-           end do
-         end if
-      
-         
-         
-      !...for a low bulk salinity (Sice_bulk < S1 = 3.5 ppt) >> linear profile
-              if(Sice_bulk .lt. S1) alpha=1.D+00
-      !...for a high bulk salinity (Sice_bulk > S2 = 4.5 ppt) >> const profile
-              if(Sice_bulk .gt. S2) alpha=0.D+00
-      !...for intermediate bulk salinity >> intermediate values between previous cases
-              if(Sice_bulk .gt. S1 .and. Sice_bulk .lt. S2) then
-                 alpha=(Sice_bulk-S2)/(S1-S2)
-              end if
-      
+   
+   
+         x1=(higb)*(f*SSS-So)/(simass/rhoice)     !NSnote fixed units 
+      else
+         x1=0
+      end if
+   
+!...brine entrapment during snow ice formation
+!...calculate if snow ice has been created
+!
+      if(higs .gt. 0.D+00 .and. simass .gt. 0) then
+         Ssi=(rhoice-rhosnow)*SSS/rhoice
+         x2=(max(0.D+00,higs))*((Ssi-So)/(simass/rhoice)) 
+      else
+         x2=0
+      end if
+   
+!...gravity drainage term
+      if(Tice(nilay+1) .gt. Tice(2)) then  !only if dT/dz < 0
+         x3=-((So-Sg)/Tg)*dti       !decreases Sice_bulk
+      else
+         x3=0
+      endif
+   
+!...flushing term
+      if(hims .gt. 0.0D+00) then
+         x4=-((So-Sfl)/Tfl)*dti      !decreases Sice_bulk
+      else
+         x4=0
+      end if
+   
+!Get time-step ice bulk salinity!
+!
+      Sice_bulk=So+x1+x2+x3+x4 !NSnote unit inconsistency x1,x2 - fixed
+!Get time-step salinity profile, which depends on the bulk salinity
+!
+!...get the ice salinity linear profile to be used in the cases of
+!...constrained from 0 ppt at the surface to the bulk salinity (Sice_bulk)
+!
+      if(simass .gt. 0) then
          do k=1,nilay+1
-            Sice(k) = alpha*Szero(k)+(1.D+00-alpha)*Sice_bulk
+            Szero(k) = Sice_bulk*zi(k)/(simass/rhoice)
          end do
+      end if
+   
       
       
-      ! Ice-ocean salt flux (Tartinville et al. 2001)
-      ! Terms representing salt rejection of the sea ice and
-      ! salt input to the ocean.
-      !
-      ! Freshwater flux
-      
-      ! Flux due to snow melt
-         if (meltpond.and.Amelt.ne.0.0) then
-          rates=meltmass-meltmasso
-         else  
-          rates=snmass-snmasso
-          rates=rates*(rhosnow/rhof)
-         endif
-      ! to be summed to ppt,evap and river inflow in GOTM
-        Ff =  (-1.D+00)* min(0.D+00,rates)/dti    ![kg m-2 s-1] !sign positive if any freshwater goes into the ocean
-        Ff = Ff/rhow   ![m s-1]
-        rates=0
-      
-      ! Flux due to brine drainage
-      !
-         Fb=simass*(x3+x4)/dti
-         
-      ! Basal accretion
-      !
-        xx2=-rhoice*(SSS-Sice(nilay+1))*max(0.D+00,higb)/dti !Vancoppenole multiplies it by the ice fractionation at the mth categorie,
-      !check how it would work properly using Hibler scheme (check 'g' in the black book)
-      
-      ! Snow ice formation
-      !
-        xx3=-rhoice*(SSS-Ssi)*(max(0.D+00,higs))/dti ![ppt kg m-2 s-1]
-      
-      ! Melt of saline ice
-      !
-        xx4=rhoice*(SSS-Sice_bulk)*(hims+himb+himi)/dti
-      
-        Feq=xx2+xx3+xx4 
-      
-        Fs = (Fb + Feq)/rhow         ! [ppt m s-1] - sign with respect to ice ! neg => S transfer from ice to water
-                                     ! pos => S transfer from water to ice ! need to invert sign in S equation  
-      
-      
-         return      
+!...for a low bulk salinity (Sice_bulk < S1 = 3.5 ppt) >> linear profile
+            if(Sice_bulk .lt. S1) alpha=1.D+00
+!...for a high bulk salinity (Sice_bulk > S2 = 4.5 ppt) >> const profile
+            if(Sice_bulk .gt. S2) alpha=0.D+00
+!...for intermediate bulk salinity >> intermediate values between previous cases
+            if(Sice_bulk .gt. S1 .and. Sice_bulk .lt. S2) then
+               alpha=(Sice_bulk-S2)/(S1-S2)
+            end if
+   
+      do k=1,nilay+1
+         Sice(k) = alpha*Szero(k)+(1.D+00-alpha)*Sice_bulk
+      end do
+   
+   
+! Ice-ocean salt flux (Tartinville et al. 2001)
+! Terms representing salt rejection of the sea ice and
+! salt input to the ocean.
+!
+! Freshwater flux
 
+! Flux due to snow melt
+      if (meltpond.and.Amelt.ne.0.0) then
+         rates=meltmass-meltmasso
+      else  
+         rates=snmass-snmasso
+         rates=rates*(rhosnow/rhof)
+      endif
+! to be summed to ppt,evap and river inflow in GOTM
+      Ff =  (-1.D+00)* min(0.D+00,rates)/dti    ![kg m-2 s-1] !sign positive if any freshwater goes into the ocean
+      Ff = Ff/rhow   ![m s-1]
+      rates=0
+   
+! Flux due to brine drainage
+!
+      Fb=simass*(x3+x4)/dti
+      
+! Basal accretion
+!
+      xx2=-rhoice*(SSS-Sice(nilay+1))*max(0.D+00,higb)/dti !Vancoppenole multiplies it by the ice fractionation at the mth categorie,
+!check how it would work properly using Hibler scheme (check 'g' in the black book)
+   
+! Snow ice formation
+!
+      xx3=-rhoice*(SSS-Ssi)*(max(0.D+00,higs))/dti ![ppt kg m-2 s-1]
+   
+! Melt of saline ice
+!
+      xx4=rhoice*(SSS-Sice_bulk)*(hims+himb+himi)/dti
+   
+      Feq=xx2+xx3+xx4 
+   
+      Fs = (Fb + Feq)/rhow         ! [ppt m s-1] - sign with respect to ice ! neg => S transfer from ice to water
+                                    ! pos => S transfer from water to ice ! need to invert sign in S equation  
+   
+   
+      return      
 end subroutine saltice_prof_simple
 
 !-----------------------------------------------------------------------
+!EOP
 
-! call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
+!BOP
+!
+! !IROUTINE: Calculation of ice/snow albedo
+!
+! !INTERFACE:
 subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss) !??? renamed from albedo_ice to albedo_ice_uvic to avoid conflict with winton variable 
+!
+! !DESCRIPTION:
+!  calculation of ice/snow albedo taken out of original sebudget routine. 
+!  Adjust incoming shortwave with ice albedo 
 ! !USES:
 
       IMPLICIT NONE
@@ -2272,7 +2271,12 @@ subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss) !??? renamed 
       real(rk), intent(out)      :: alb,PenSW
 ! !INPUT/OUTPUT PARAMETERS:
       real(rk), intent(inout)      :: fluxt
+
 !
+! !REVISION HISTORY:
+!  Original author(s): N. Steiner 
+!
+!  See log for the icemodel module
 ! !LOCAL VARIABLES:
 ! snow_dist
       real(rk)                  :: I_0_tmp
@@ -2387,6 +2391,7 @@ end subroutine albedo_ice_uvic
 
 !-----------------------------------------------------------------------
 
+!  subroutine ice_interpol(var_grid2,var_grid1,nilay_int,nint_total) jpnote ??? in a #if 0 in old code --> should we still include? 
 
 !-----------------------------------------------------------------------
 
@@ -2427,9 +2432,6 @@ end subroutine albedo_ice_uvic
 !----------------------------------------------------------------------
 ! end internal subroutines
 !----------------------------------------------------------------------     
-!
-! 
-!
 !
 !
 !-----------------------------------------------------------------------
