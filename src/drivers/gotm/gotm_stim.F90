@@ -294,8 +294,6 @@ allocate(Tice(2))
                      lon,lat,I_0,airt,airp,hum,u10,v10,cloud,rho,rho_0, &
                      longwave_radiation_method,hum_method,fluxes_method,albedo,heat)
 
-!??? call do_ice(h(nlev),) --> do_stim(dz,) should I use dz of h(nlev) or h(n) 
-
 ! !DESCRIPTION:
 !
 ! !USES:
@@ -325,8 +323,7 @@ allocate(Tice(2))
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Tf
 
-   !jpnote
-   integer                    :: n
+   integer                    :: n !jpnote
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -364,7 +361,7 @@ allocate(Tice(2))
 #ifdef STIM_FLATO
       case(4)
       
-         if (S .lt. 0.01) then  !jpnote: S .lt. 0.01  0 .eq. 1
+         if (S .lt. 0.01) then  
             LEVEL0 'The FLato ice model is developed for oceanic conditions.'
             LEVEL0 'Very low salinity is not supported - and the principle'
             LEVEL0 'advantage of the model (brine contribution to latent'
@@ -372,8 +369,7 @@ allocate(Tice(2))
             LEVEL0 'Please select another ice model.'
             stop 'do_stim()'
          else
-               !n = ubound(S,1)    !already set in gotm.F90 --> nlev ??? -jp
-               !?? use dz or h(n) or h(nlev)
+               !n = ubound(S,1) 
                call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
                           I_0,airt,airp,hum,u10,v10,precip,cloud, &
                           Tw,S,rho,rho_0, &
