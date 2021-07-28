@@ -1969,7 +1969,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
          Sni=6.0D00
    
    !      Tmix=Tfreezi+Hmix/(rCpmix*depmix)
-         Tmix=(TSS+kelvin)+ice_uvic_Hmix/(rCpmix*hSS)
+         Tmix=(TSS+kelvin)+Hmix/(rCpmix*hSS)
    !  Set all 'ice' temperatures to be the mixed layer temperature
    ! (only the surface value has any real meaning in this case, 
    ! since there is actually no ice yet)
