@@ -83,7 +83,7 @@
    real(rk), parameter :: kelvin = 273.15D+00
 !************   !kelvin exists in air_sea variables.f90 --> as 273.16 
 !   Tmelts            - melting temperature of snow (fresh water) (K)
-   real(rk), parameter :: Tmelts = 273.05D+00
+   real(rk), parameter :: Tmelts = 273.15D+00
 !   Tmelti      - melting temperature of sea ice (K)
    real(rk), parameter  :: Tmelti=273.05D+00
 !   Condfi            - conductivity of pure ice (W m-1 K-1)
@@ -107,8 +107,6 @@
 !-----------------------------------------------------------
 ! YAML VARIABLES from old code nml 
 !-----------------------------------------------------------
-!TURNING WINTON INSIDE FLATO ON OFF
-   integer, public :: runwintonflato = 0        ! run the winton model inside of flato 0:off, 1:on
 
 !  !initializing yaml variables to reasonable defaults 
 !   nilay              - number of snow & ice layers
@@ -212,31 +210,27 @@
    real(rk), public, target            :: ice_uvic_botgrowth     ! bottom growth - ice mass growth at the ice bottom at time step (m) 
    real(rk), public, target            :: ice_uvic_termelt       ! internal melting - ice mass melted in the ice interior at time step (m)
    
-   !try to turn these into pointers::::
-   !real(rk), target, public :: Hsnow = 0._rk   ! Total snow thickness
-   !real(rk), target, public :: Hice = 0._rk   --> basing it off of this, what was done in winton 
    real(rk), public, target            :: ice_uvic_Fh = 0._rk            ! interface heat flux (W/m2)
-   real(rk), public, target                 :: ice_uvic_Ff = 0._rk          ! interface freshwater flux (m s-1)
-   real(rk), public, target                    :: ice_uvic_Fs = 0._rk          ! interface salt flux - (ppt m s-1)
+   real(rk), public, target            :: ice_uvic_Ff = 0._rk          ! interface freshwater flux (m s-1)
+   real(rk), public, target            :: ice_uvic_Fs = 0._rk          ! interface salt flux - (ppt m s-1)
    
   
   
-   real(rk), public, target                      :: ice_uvic_Sicebulk
-   real(rk), public, target                     :: ice_uvic_Hmix                ! transferred energy - check  (m)
+   real(rk), public, target            :: ice_uvic_Sicebulk
+   real(rk), public, target            :: ice_uvic_Hmix                ! transferred energy - check  (m)
                                        !   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
                                        !                 the SWR which crosses the ice slab and reach the water. keep it for now
    real(rk), public, target                  :: ice_uvic_Aice               ! ice area fraction which is : open  
    real(rk), public, target                  :: ice_uvic_Asnow              ! ice area fraction which is : snow       
-   real(rk), public, target            :: ice_uvic_Amelt              ! ice area fraction which is : meltpond  
-   real(rk), public , target                   :: ice_uvic_hm
+   real(rk), public, target                  :: ice_uvic_Amelt              ! ice area fraction which is : meltpond  
+   real(rk), public , target                 :: ice_uvic_hm
 !  University of Victoria ice model: allocatable variables
 !  ice_uvic_Tice  - temperature array (dimensioned nlay+1), Tice(1) is the
 !                 upper surface temperature, Tice(nlay+1) is the bottom
 !                 temperature, remaining values at layer interfaces (K)
   
-   !real(rk), allocatable, target, public :: Tice(:) --> should I decalre them like this, this is how they are declared in the winton model 
   
-   real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Tice !--> exists above as Tice(:) :: Tice(nilay+1)  ! ice layer temperature Tice(nilay +1)(deg-C)
+   real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Tice  ! ice layer temperature Tice(nilay +1)(deg-C)
    !real(rk), allocatable, target, public          :: ice_uvic_Cond(:)
    real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Cond  ! thermal conductivities defined at the 
                                                                            ! centre of each layer Cond(nilay)(W m-1 K-1)
