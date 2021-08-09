@@ -78,10 +78,8 @@
    real(rk), parameter :: rhowaterfresh = 1000.D+00
 !   rhoice           - ice density (kg m-3)
    real(rk), parameter :: rhoice = 913.D+00
-!************
 !   kelvin           - zero deg Celsius (K)
    real(rk), parameter :: kelvin = 273.15D+00
-!************   !kelvin exists in air_sea variables.f90 --> as 273.16 
 !   Tmelts            - melting temperature of snow (fresh water) (K)
    real(rk), parameter :: Tmelts = 273.15D+00
 !   Tmelti      - melting temperature of sea ice (K)
@@ -187,16 +185,10 @@
 !-------------------------------------------------------------------------------------------------------------
 ! Flato PUBLIC DATA MEMBERS from ice.F90
 !-------------------------------------------------------------------------------------------------------------
-  ! integer, public                     :: ice_method !jpnote: --> read in from yml not needed 
-!  Simple 'ice model'
-   !real(rk), public                    :: ice_layer  --> not used 
-!  Winton/UVIC ice model
-   real(rk), public, target            :: ice_hs,ice_hi  !--> jpnote: exists as hice and hsnow, and hi and hs for winton - defining it again, maybe remove if redundant 
-!  Winton ice model
-  ! real(rk), public, target                    :: ice_ts,ice_T1,ice_T2
-   !real(rk), public, target                    :: ice_tmelt,ice_bmelt
+
 !  University of Victoria ice model
 ! ts,tb are the upper surface temperature of the ice/snow and tb is the lowest layer temperature (not the bottom temperature, which is set to Tfreezi) all in (K)
+   real(rk), public, target            :: ice_hs,ice_hi
    real(rk), public, target            :: ice_uvic_ts
    real(rk), public, target            :: ice_uvic_tb
    real(rk), public, target            :: ice_uvic_swr_0
@@ -210,7 +202,7 @@
    real(rk), public, target            :: ice_uvic_botgrowth     ! bottom growth - ice mass growth at the ice bottom at time step (m) 
    real(rk), public, target            :: ice_uvic_termelt       ! internal melting - ice mass melted in the ice interior at time step (m)
    
-   real(rk), public, target            :: ice_uvic_Fh = 0._rk            ! interface heat flux (W/m2)
+   real(rk), public, target            :: ice_uvic_Fh = 0._rk          ! interface heat flux (W/m2)
    real(rk), public, target            :: ice_uvic_Ff = 0._rk          ! interface freshwater flux (m s-1)
    real(rk), public, target            :: ice_uvic_Fs = 0._rk          ! interface salt flux - (ppt m s-1)
    
@@ -231,7 +223,7 @@
   
   
    real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Tice  ! ice layer temperature Tice(nilay +1)(deg-C)
-   !real(rk), allocatable, target, public          :: ice_uvic_Cond(:)
+
    real(rk), public, dimension(:), allocatable, target           :: ice_uvic_Cond  ! thermal conductivities defined at the 
                                                                            ! centre of each layer Cond(nilay)(W m-1 K-1)
    real(rk), public, dimension(:), allocatable, target            :: ice_uvic_rhoCp ! volumetric heat capacities defined at 

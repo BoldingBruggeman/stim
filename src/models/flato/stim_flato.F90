@@ -94,7 +94,7 @@ module stim_flato
   ! qb           - long wave back radiation (in-out) (W m-2)	
    real(rk), public :: qb
    !qe           - latent heat flux into ice (W m-2)		
-   real(rk) :: qe                                        !jpnote: switching qh and qe
+   real(rk) :: qe                                      
   ! qh           - sensible heat flux into ice (W m-2)		
    real(rk) :: qh
 !   tx,ty        - surface stress components in x and y direction (Pa)!check
@@ -180,7 +180,7 @@ subroutine init_stim_flato()
 ! 
 ! !LOCAL VARIABLES:
 !
-   integer             :: k,rc     !from init_ice_uvic - jp 
+   integer             :: k,rc    
 ! !LOCAL PARAMETERS:
 
 !EOP
@@ -281,7 +281,6 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
 !
 ! !INPUT PARAMETERS:
    real(rk), intent(in)     :: dto ! ocean timestep (sec) 
-   !real(rk), intent(in)     :: dz !--> h from meanflow jpnote - 
    real(rk), intent(in)    :: h  ! sea surface layer thickness 
    integer, intent(in)     :: julianday ! this julian day 
    integer, intent(in)     :: secondsofday ! seconds for this day 
@@ -290,7 +289,6 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(inout)  :: I_0   ! shortwave radiation at sea surface  
    real(rk), intent(in)     :: airt  ! 2m temperature
    real(rk), intent(in)     :: airp  ! sea surface pressure
-   !real(rk), intent(in)     :: hum   ! relative humidity from airsea  - jpnote
    real(rk), intent(in)    :: rh    ! relative humidity 
    real(rk), intent(inout)  :: u10   ! 10 m wind u-component
    real(rk), intent(inout)  :: v10   ! 10 m wind v-component
@@ -1408,12 +1406,9 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 ! NSnote  TTss is in Kelvin!!!
       call humidity(hum_method,rh,airp,TTss-kelvin,airt)
       call longwave_radiation(longwave_radiation_method, &
-                          lat,TTss,airt+kelvin,cloud,qb)     ! subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
+                          lat,TTss,airt+kelvin,cloud,qb)     
       call airsea_fluxes(fluxes_method, &
-                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  !jpnote: didnt switch qe, qh - already in the right order
-
-                         !fluxes_method,.false.,.false., &
-                         !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)
+                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  
 
 ! evap is set to zero for now....as for ice_winton, not sure what it is...
       evap = 0
@@ -1423,7 +1418,7 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 !.... long wave flux
       fluxt=qb
 !
-!....sensible heat flux  !jpnote: switching qe and qh 
+!....sensible heat flux  
       fluxt=fluxt+qh
 !
 !....latent heat flux
@@ -1619,7 +1614,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk)                 ::    fTs,dTemp,Tsp,fTsdT1,fTsdT2
    real(rk)                  ::    fprime,Tsnew,Error,Ts1,fTs1
    real(rk)                  ::    dTs,Tsu,fTsu,Ts2,Tsm,fTsm,fTsl, Tsl,Ts  
-   integer                   ::    nrit,ksearch,kb_uvic,l     !jpnote renamed kb 
+   integer                   ::    nrit,ksearch,kb_uvic,l   
    real(rk),parameter        ::    toler=1.D-02 
 !EOP
 !-----------------------------------------------------------------------
@@ -2256,11 +2251,12 @@ end subroutine saltice_prof_simple
 ! !IROUTINE: Calculation of ice/snow albedo
 !
 ! !INTERFACE:
-subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss) !??? renamed from albedo_ice to albedo_ice_uvic to avoid conflict with winton variable 
+subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
 !
 ! !DESCRIPTION:
 !  calculation of ice/snow albedo taken out of original sebudget routine. 
 !  Adjust incoming shortwave with ice albedo 
+
 ! !USES:
 
       IMPLICIT NONE
@@ -2391,7 +2387,7 @@ end subroutine albedo_ice_uvic
 
 !-----------------------------------------------------------------------
 
-!  subroutine ice_interpol(var_grid2,var_grid1,nilay_int,nint_total) jpnote ??? in a #if 0 in old code --> should we still include? 
+!  subroutine ice_interpol(var_grid2,var_grid1,nilay_int,nint_total) ! jpnote: include? 
 
 !-----------------------------------------------------------------------
 
@@ -2420,7 +2416,7 @@ end subroutine albedo_ice_uvic
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !LEVEL1 'clean_ice_uvic'  !commented for now jpnote
+   !LEVEL1 'clean_ice_uvic'  
 
    !LEVEL3 'closing ice.nc file...'  !commented for now  jpnote
 !   call close_ncdf()
