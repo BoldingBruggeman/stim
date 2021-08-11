@@ -20,7 +20,7 @@
    use stim_winton, only: init_stim_winton, do_stim_winton
 #endif
 #ifdef STIM_FLATO
-   use stim_flato, only: init_stim_flato, do_ice_uvic ! jp added : do_ice_uvic removed: do_stim_flato,
+   use stim_flato, only: init_stim_flato, do_ice_uvic
 #endif
    IMPLICIT NONE
 !

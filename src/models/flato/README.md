@@ -1,5 +1,6 @@
-# Flato ice model [WIP]
+# Flato ice model
 
-This is a wrapper around the ice model from UVic ice model inspired by Flato & Brown etc...
+This is an ice model based on the 1-D thermodynamic sea ice model by Greg Flato (Flato and Brown, 1996) and modified to fit the GOTM structure, as well as containing the snow distribution and meltponds subgrid parametrization (Abraham et al. 2014).
 
+It performs a surface energy budget calculation to get net flux at ice, snow or open water surface, solves the 1-D heat conduction problem using an implicit finite difference scheme with the ice/snow slab discretized into an arbitrary number of thickness layers (presently configured for only one snow layer). A Newton-Raphson iterative scheme is used to solve for the surface temperature which appears non-linearly in both surface and conductive fluxes. Surface melt is calculated to use up the net incoming energy flux at the surface with the surface temperature fixed at the melting point. Additional melt may occur to restore temperatures to the freezing point where it is exceeded. Under cooling conditions, the upper surface has a flux boundary condition with surface growth occurring only if snow load causes surface flooding. Growth at the ice underside is calculated so as to balance the flux at the bottom where the temperature remains at the freezing point of sea water. If ice melts completely, incoming heat is stored in the mixed layer which must cool to the freezing point before new ice can form. Initial growth of very thin ice is calculated assuming a linear temperature profile.
 
