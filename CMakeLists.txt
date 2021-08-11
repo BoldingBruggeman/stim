@@ -33,6 +33,7 @@ endif(STIM_EMBED_VERSION)
 option(STIM_LEBEDEV "Lebedev ICE model" ON)
 option(STIM_MYLAKE "MyLake ICE model" ON)
 option(STIM_WINTON "Winton ICE model" ON)
+option(STIM_FLATO "Flato ICE model" ON)
 
 include(src/CMakeLists.txt)
 include(tests/CMakeLists.txt)

@@ -19,6 +19,9 @@
 #ifdef STIM_WINTON
    use stim_winton, only: init_stim_winton, do_stim_winton
 #endif
+#ifdef STIM_FLATO
+   use stim_flato, only: init_stim_flato, do_ice_uvic
+#endif
    IMPLICIT NONE
 !
    public
