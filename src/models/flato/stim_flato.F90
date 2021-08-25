@@ -254,13 +254,19 @@ end subroutine init_stim_flato
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
 !
 ! !INTERFACE: 
-subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
-                        I_0,airt,airp,rh,u10,v10,precip,cloud, &
-                        TSS,SSS,rhowater,rho_0, &
-                        longwave_radiation_method,hum_method,fluxes_method, &
-                        ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
-                        Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
-                        TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i)
+subroutine do_ice_uvic(dto,h,julianday,secondsofday, &
+                      I_0,airt,precip,TSS,SSS,rhowater,rho_0, &
+                      ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
+                      Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
+                      TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,&
+                      swr_0,precip_i,sfall_i,Qfluxes_uvic)
+!subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
+                    !    I_0,airt,airp,rh,u10,v10,precip,cloud, &
+                     !   TSS,SSS,rhowater,rho_0, &
+                     !   longwave_radiation_method,hum_method,fluxes_method, &
+                     !   ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
+                     !   Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
+                     !   TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i,Qfluxes_uvic)
 ! !DESCRIPTION:
 !  Update the sea-ice conditions: if no ice, call open_water and determine 
 !  new ice growth, if ice exists calculate growth or melt. The model has 
@@ -284,23 +290,23 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
    real(rk), intent(in)    :: h  ! sea surface layer thickness 
    integer, intent(in)     :: julianday ! this julian day 
    integer, intent(in)     :: secondsofday ! seconds for this day 
-   real(rk), intent(in)    :: lon    ! longitude for this point 
-   real(rk), intent(in)    :: lat ! latitude for this point 
+  ! real(rk), intent(in)    :: lon    ! longitude for this point 
+  ! real(rk), intent(in)    :: lat ! latitude for this point 
    real(rk), intent(inout)  :: I_0   ! shortwave radiation at sea surface  
    real(rk), intent(in)     :: airt  ! 2m temperature
-   real(rk), intent(in)     :: airp  ! sea surface pressure
-   real(rk), intent(in)    :: rh    ! relative humidity 
-   real(rk), intent(inout)  :: u10   ! 10 m wind u-component
-   real(rk), intent(inout)  :: v10   ! 10 m wind v-component
+  ! real(rk), intent(in)     :: airp  ! sea surface pressure
+  ! real(rk), intent(in)    :: rh    ! relative humidity 
+  ! real(rk), intent(inout)  :: u10   ! 10 m wind u-component
+  ! real(rk), intent(inout)  :: v10   ! 10 m wind v-component
    real(rk), intent(inout)  :: precip! freshwater precipitation (m/s) 
-   real(rk), intent(in)     :: cloud ! cloud cover
+  ! real(rk), intent(in)     :: cloud ! cloud cover
    real(rk), intent(inout)  :: TSS     ! sea surface temperature
    real(rk), intent(in)     :: SSS     ! sea surface salinity
    real(rk), intent(in)      :: rhowater   ! sea surface layer density 
    real(rk), intent(in)      :: rho_0 ! reference density 
-   integer, intent(in)       :: longwave_radiation_method ! method for LW  
-   integer, intent(in)       :: hum_method ! method for humidity
-   integer, intent(in)       :: fluxes_method ! method for fluxes
+   !integer, intent(in)       :: longwave_radiation_method ! method for LW  
+   !integer, intent(in)       :: hum_method ! method for humidity
+  ! integer, intent(in)       :: fluxes_method ! method for fluxes
     
    ! !INPUT/OUTPUT PARAMETERS:
    real(rk), intent(inout)   :: ice_hi    ! ice thickness (m)
@@ -342,9 +348,16 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                                                 ! meltpond, respectively
    real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
 
+interface
+   subroutine Qfluxes_uvic(T,qh,qe,qb)
+      integer, parameter                   :: rk = kind(1.d0)
+      real(rk), intent(in)                 :: T
+      real(rk), intent(out)                :: qh,qe,qb
+   end subroutine
+end interface
 
-   ! LOCAL VARIABLES 
-   !real(rk)        :: h1,h2  !point to hice and hsnow whose values are taken from stim_variables.F90 
+! LOCAL VARIABLES 
+   !real(rk)        :: h1,h2 
 
    real(rk)          :: dmsi ! dmsi - new ice formation at open water [kg m-2]
    integer           :: yy,mm,dd,j,k
@@ -435,10 +448,13 @@ dti=dto
 !  iteration on surface temperature
 !  This will update the ice temperature at each layer
 
-      call nr_iterate(hum_method,longwave_radiation_method,fluxes_method,nilay,&
-                      airt,rh,cloud,I_0,Told,Tice,Pari,&
-                      Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-                      lat,u10,v10,precip,airp,evap,alb)
+    !  call nr_iterate(hum_method,longwave_radiation_method,fluxes_method,nilay,&
+        !              airt,rh,cloud,I_0,Told,Tice,Pari,&
+         !             Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+         !             lat,u10,v10,precip,airp,evap,alb,Qfluxes_uvic)
+      call nr_iterate(nilay,I_0,Told,Tice,Pari,&
+                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi, &
+                  Sint,evap,alb,Qfluxes_uvic)
 
 !  construct depth array by adding up dzi's
       zi(1)= 0
@@ -1351,9 +1367,10 @@ end subroutine growthtb
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                     TTss,airt,rh,cloud,ice_hi,ice_hs,&
-                     lat,u10,v10,precip,airp,evap)
+!subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+     !                TTss,airt,rh,cloud,ice_hi,ice_hs,&
+     !                lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
 !
 ! !DESCRIPTION:
 !
@@ -1372,18 +1389,27 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-      integer, intent(in)       :: longwave_radiation_method ! method for LW
-      integer, intent(in)       :: hum_method ! method for humidity
-      integer, intent(in)       :: fluxes_method ! method for fluxes
-      real(rk), intent(in)      :: TTss,airt,rh,cloud
-      real(rk), intent(in)      :: lat   ! latitude for this point
-      real(rk), intent(in)      :: u10   ! 10 m wind u-component
-      real(rk), intent(in)      :: v10   ! 10 m wind v-component
-      real(rk), intent(in)      :: airp  ! sea surface pressure
+     ! integer, intent(in)       :: longwave_radiation_method ! method for LW
+     ! integer, intent(in)       :: hum_method ! method for humidity
+     ! integer, intent(in)       :: fluxes_method ! method for fluxes
+      real(rk), intent(in)      :: TTss
+   !,airt,rh,cloud
+     ! real(rk), intent(in)      :: lat   ! latitude for this point
+     ! real(rk), intent(in)      :: u10   ! 10 m wind u-component
+     ! real(rk), intent(in)      :: v10   ! 10 m wind v-component
+     ! real(rk), intent(in)      :: airp  ! sea surface pressure
 ! !INOUT PARAMETERS:
-      real(rk), intent(inout)   :: precip! freshwater precipitation (m/s)
+     ! real(rk), intent(inout)   :: precip! freshwater precipitation (m/s)
       real(rk), intent(inout)   :: evap! freshwater evaporation (m/s)
       real(rk), intent(inout)   :: ice_hi,ice_hs
+
+   interface
+      subroutine Qfluxes_uvic(T,qh,qe,qb)
+         integer, parameter                   :: rk = kind(1.d0)
+         real(rk), intent(in)                 :: T
+         real(rk), intent(out)                :: qh,qe,qb
+      end subroutine
+   end interface
 
 ! !REVISION HISTORY:
 !  adjusted to GOTM F90 Nadja Steiner Dec 2008
@@ -1391,6 +1417,7 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 !                                          Climate Modelling and Analysis
 !BOC
 ! !LOCAL VARIABLES:
+
 
 !EOP
 !-----------------------------------------------------------------------
@@ -1404,11 +1431,14 @@ subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
 !...Calculate surface fluxes from meteorological data using bulk formulae
 !     Recalculate surface fluxes for sea ice conditions
 ! NSnote  TTss is in Kelvin!!!
-      call humidity(hum_method,rh,airp,TTss-kelvin,airt)
-      call longwave_radiation(longwave_radiation_method, &
-                          lat,TTss,airt+kelvin,cloud,qb)     
-      call airsea_fluxes(fluxes_method, &
-                         TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  
+
+    !  call humidity(hum_method,rh,airp,TTss-kelvin,airt) 
+     ! call longwave_radiation(longwave_radiation_method, &
+     !                     lat,TTss,airt+kelvin,cloud,qb)     
+    !  call airsea_fluxes(fluxes_method, &
+   !                    TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  
+
+      call Qfluxes_uvic(TTss,qh,qe,qb)
 
 ! evap is set to zero for now....as for ice_winton, not sure what it is...
       evap = 0
@@ -1550,11 +1580,13 @@ end subroutine surfmelt
 !-----------------------------------------------------------------------
 
 
-
-subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
-                        nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
-                        Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-                        lat,u10,v10,precip,airp,evap,alb)
+subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
+                  Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi, &
+                  Sint,evap,alb,Qfluxes_uvic)
+!subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
+                       ! nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
+                       ! Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
+                       ! lat,u10,v10,precip,airp,evap,alb,Qfluxes_uvic) !jpnote 
 
                         !                        
 ! !DESCRIPTION:
@@ -1577,17 +1609,17 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:  
-   integer, intent(in)       :: longwave_radiation_method ! method for LW
-   integer, intent(in)       :: hum_method ! method for humidity
-   integer, intent(in)       :: fluxes_method ! method for fluxes
+   !integer, intent(in)       :: longwave_radiation_method ! method for LW
+   !integer, intent(in)       :: hum_method ! method for humidity
+   !integer, intent(in)       :: fluxes_method ! method for fluxes
    integer, intent(in)         :: nilay
-   real(rk), intent(in)      :: airt
-   real(rk), intent(in)      :: rh
-   real(rk), intent(in)      :: cloud 
-   real(rk), intent(in)      :: lat   ! latitude for this point
-   real(rk), intent(in)      :: u10   ! 10 m wind u-component
-   real(rk), intent(in)      :: v10   ! 10 m wind v-component
-   real(rk), intent(in)      :: airp  ! sea surface pressure
+   !real(rk), intent(in)      :: airt
+   !real(rk), intent(in)      :: rh
+   !real(rk), intent(in)      :: cloud 
+   !real(rk), intent(in)      :: lat   ! latitude for this point
+   !real(rk), intent(in)      :: u10   ! 10 m wind u-component
+   !real(rk), intent(in)      :: v10   ! 10 m wind v-component
+   !real(rk), intent(in)      :: airp  ! sea surface pressure
 ! !OUTPUT PARAMETERS:
    real(rk), intent(out)       :: Sice_bulk
    real(rk), intent(out)       :: Told(nilay+1)
@@ -1599,7 +1631,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk), intent(inout)     :: Tice(nilay+1)
    real(rk), intent(inout)     :: ice_hi,ice_hs
    real(rk), intent(inout)     :: I_0
-   real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
+  ! real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
    real(rk), intent(inout)     :: evap! freshwater evaporation (m/s)
 
 !
@@ -1607,7 +1639,15 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !  adjusted to GOTM F90 Nadja Steiner Dec 2008
 !  Original author(s):  Gregory M. Flato - Canadian Centre for 
 !                                          Climate Modelling and Analysis
-!
+interface
+   subroutine Qfluxes_uvic(T,qh,qe,qb)
+      integer, parameter                   :: rk = kind(1.d0)
+      real(rk), intent(in)                 :: T
+      real(rk), intent(out)                :: qh,qe,qb
+   end subroutine
+end interface
+
+   !
 !BOC
 ! !LOCAL VARIABLES:
 ! coefficients for 
@@ -1618,6 +1658,7 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    real(rk),parameter        ::    toler=1.D-02 
 !EOP
 !-----------------------------------------------------------------------
+
 
 
 !      LEVEL1'nr_iterate'
@@ -1641,9 +1682,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    do nrit=1,5
 !      
 !......calculate surface energy budget terms
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Ts,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+                  !  Ts,airt,rh,cloud,ice_hi,ice_hs,&
+                  !  lat,u10,v10,precip,airp,evap,Qfluxes_uvic) !jpadded
+      call sebudget(Ts,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
 !
 !
@@ -1672,9 +1714,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !......finite difference
       dTemp=0.1
       Tsp=Ts+dTemp
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+                  !  Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+                  !  lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Tsp,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
 !
       do l=1,nilay+1
@@ -1684,9 +1727,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
          Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
       fTsdT1=Tsp-Tice(1)
       Tsp=Ts-dTemp
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+             !       Tsp,airt,rh,cloud,ice_hi,ice_hs,&
+             !       lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Tsp,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
 !
       do l=1,nilay+1
@@ -1736,9 +1780,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
 !
 !....first, do initial guess again
    Ts1=Told(1)
-   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                 Ts1,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+   !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+              !   Ts1,airt,rh,cloud,ice_hi,ice_hs,&
+                !    lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+   call sebudget(Ts1,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
 !
    do l=1,nilay+1
@@ -1753,9 +1798,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    dTs=1.
    do ksearch=1,10
       Tsu=Ts1+dTs*float(ksearch-1)
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Tsu,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+        !            Tsu,airt,rh,cloud,ice_hi,ice_hs,&
+       !             lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Tsu,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsu)
 !
       do l=1,nilay+1
@@ -1773,9 +1819,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
       endif
 !
       Tsl=Ts1-dTs*float(ksearch-1)
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Tsl,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+      !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+                !    Tsl,airt,rh,cloud,ice_hi,ice_hs,&
+              !      lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Tsl,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsl)
 !
       do l=1,nilay+1
@@ -1808,9 +1855,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    do kb_uvic=1,20
 !......one end of interval
 
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Ts1,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+      !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+       !             Ts1,airt,rh,cloud,ice_hi,ice_hs,&
+      !              lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Ts1,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
 !
       do l=1,nilay+1
@@ -1821,9 +1869,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
       fTs1=Ts1-Tice(1)
 !......middle of interval
       Tsm=(Ts1+Ts2)/2.D+00
-      call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                    Tsm,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+           !         Tsm,airt,rh,cloud,ice_hi,ice_hs,&
+           !         lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+      call sebudget(Tsm,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsm)
 !
       do l=1,nilay+1
@@ -1873,9 +1922,10 @@ subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
    print*,'***!!!! Doing a forward time step anyway !!!***'
    Ts=Told(1)
  902 continue
-   call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                 Ts,airt,rh,cloud,ice_hi,ice_hs,&
-                    lat,u10,v10,precip,airp,evap)
+   !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
+             !    Ts,airt,rh,cloud,ice_hi,ice_hs,&
+             !       lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+   call sebudget(Ts,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
 !
    do l=1,nilay+1

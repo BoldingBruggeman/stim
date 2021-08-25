@@ -290,9 +290,8 @@ allocate(Tice(2))
 ! !IROUTINE: do the ice calculations
 
 ! !INTERFACE:
-   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,julianday,secondsofday, &
-                     lon,lat,I_0,airt,airp,hum,u10,v10,cloud,rho,rho_0, &
-                     longwave_radiation_method,hum_method,fluxes_method,albedo,heat)
+   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes,Qfluxes_uvic,julianday,secondsofday, &
+                     I_0,airt,rho,rho_0,albedo,heat)
 
 ! !DESCRIPTION:
 !
@@ -300,10 +299,12 @@ allocate(Tice(2))
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)    :: dz,dt,S,Qsw,lon,lat,airt,airp,hum,cloud,rho,rho_0     !jp
-   REALTYPE, intent(inout)    :: Ta,precip,I_0,u10,v10,albedo,heat
-   integer, intent(in)     :: julianday,secondsofday,longwave_radiation_method,hum_method,fluxes_method
-  
+   !REALTYPE, intent(in)    :: dz,dt,S,Qsw,lon,lat,airt,airp,hum,cloud,rho,rho_0     !jp
+  ! REALTYPE, intent(inout)    :: Ta,precip,I_0,u10,v10,albedo,heat
+   !integer, intent(in)     :: julianday,secondsofday,longwave_radiation_method,hum_method,fluxes_method
+   REALTYPE, intent(in)    :: dz,dt,S,Qsw,airt,rho,rho_0     !jp
+   REALTYPE, intent(inout)    :: Ta,precip,I_0,albedo,heat
+   integer, intent(in)     :: julianday,secondsofday
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE, intent(inout) :: Tw
@@ -314,6 +315,13 @@ allocate(Tice(2))
          REALTYPE, intent(out)                :: qh,qe,qb 
       end subroutine
    end interface
+!jpnote
+interface
+   subroutine Qfluxes_uvic(T,qh,qe,qb)
+      REALTYPE, intent(in)                 :: T
+      REALTYPE, intent(out)                :: qh,qe,qb 
+   end subroutine
+end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -370,10 +378,8 @@ allocate(Tice(2))
             stop 'do_stim()'
          else
                !n = ubound(S,1) 
-               call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
-                          I_0,airt,airp,hum,u10,v10,precip,cloud, &
-                          Tw,S,rho,rho_0, &
-                          longwave_radiation_method,hum_method,fluxes_method,&
+            call do_ice_uvic(dt,dz,julianday,secondsofday, &
+                          I_0,airt,precip,Tw,S,rho,rho_0, &
                           ice_hi,ice_hs,ice_uvic_hm,ice_uvic_Tice, &
                           ice_uvic_Cond,ice_uvic_rhoCp, &
                           ice_uvic_Sint,ice_uvic_dzi,ice_uvic_zi, &
@@ -383,7 +389,21 @@ allocate(Tice(2))
                           ice_uvic_botmelt,ice_uvic_termelt, &
                           ice_uvic_topgrowth,ice_uvic_botgrowth,&
                           ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_Asnow,&
-                          ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i)
+                          ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i,Qfluxes_uvic)
+              ! call do_ice_uvic(dt,dz,julianday,secondsofday,lon,lat, &
+                        !  I_0,airt,airp,hum,u10,v10,precip,cloud, &
+                        !  Tw,S,rho,rho_0, &
+                        !  longwave_radiation_method,hum_method,fluxes_method,&
+                        !  ice_hi,ice_hs,ice_uvic_hm,ice_uvic_Tice, &
+                       !   ice_uvic_Cond,ice_uvic_rhoCp, &
+                       !   ice_uvic_Sint,ice_uvic_dzi,ice_uvic_zi, &
+                       !   ice_uvic_Pari,ice_uvic_Told,albedo,heat,&
+                       !   ice_uvic_Fh,ice_uvic_Ff,ice_uvic_Fs,&
+                       !   ice_uvic_Sicebulk, ice_uvic_topmelt, &
+                        !  ice_uvic_botmelt,ice_uvic_termelt, &
+                       !   ice_uvic_topgrowth,ice_uvic_botgrowth,&
+                        !  ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_Asnow,&
+                        !  ice_uvic_Amelt,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i,Qfluxes_uvic)
 
                
                ice_uvic_ts=ice_uvic_Tice(1)
