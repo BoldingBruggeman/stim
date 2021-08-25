@@ -8,7 +8,7 @@
 module stim_flato
 !
 ! !DESCRIPTION:
-!!  This module is based on the 1-D thermodynamic sea ice model 
+!  This module is based on the 1-D thermodynamic sea ice model 
 !  (ONE_D_THERMOv1.0) by Greg Flato (Flato and Brown, 1996. JGR, 101(C10)) 
 !  and modified to fit the GOTM structure.
 !  It performs a surface energy budget calculation to get net flux at ice, 
@@ -90,7 +90,7 @@ module stim_flato
 !    dti        - timestep in the ice model (usually set to ocean time step)
    real(rk) :: dti
 !
-!*****fluxes 
+!----fluxes 
   ! qb           - long wave back radiation (in-out) (W m-2)	
    real(rk), public :: qb
    !qe           - latent heat flux into ice (W m-2)		
@@ -170,8 +170,8 @@ module stim_flato
 !
 !IROUTINE: Initialise the uvic--ice model \label{sec:init-uvic-ice}
 ! !INTERFACE:
-!KB   subroutine init_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip)
-subroutine init_stim_flato() 
+!KB   subroutine init_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip)  
+   subroutine init_stim_flato() 
 !
 ! !DESCRIPTION:
 !
@@ -244,7 +244,7 @@ subroutine init_stim_flato()
 
    return
 
-end subroutine init_stim_flato
+   end subroutine init_stim_flato
 !EOC
 
 !-----------------------------------------------------------------------
@@ -254,7 +254,7 @@ end subroutine init_stim_flato
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
 !
 ! !INTERFACE: 
-subroutine do_ice_uvic(dto,h,julianday,secondsofday, &
+   subroutine do_ice_uvic(dto,h,julianday,secondsofday, &
                       I_0,airt,precip,TSS,SSS,rhowater,rho_0, &
                       ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                       Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
@@ -348,13 +348,13 @@ subroutine do_ice_uvic(dto,h,julianday,secondsofday, &
                                                 ! meltpond, respectively
    real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
 
-interface
-   subroutine Qfluxes_uvic(T,qh,qe,qb)
-      integer, parameter                   :: rk = kind(1.d0)
-      real(rk), intent(in)                 :: T
-      real(rk), intent(out)                :: qh,qe,qb
-   end subroutine
-end interface
+   interface
+      subroutine Qfluxes_uvic(T,qh,qe,qb)
+         integer, parameter                   :: rk = kind(1.d0)
+         real(rk), intent(in)                 :: T
+         real(rk), intent(out)                :: qh,qe,qb
+      end subroutine
+   end interface
 
 ! LOCAL VARIABLES 
    !real(rk)        :: h1,h2 
@@ -375,7 +375,7 @@ end interface
 !
 ! set ice timestep to ocean timestep
 
-dti=dto
+   dti=dto
 ! initialize new ice formation in open water, melt/growth for this timestep
       dmsi=0 
       TopMelt = 0 
@@ -531,17 +531,18 @@ dti=dto
 
 !#endif
 
-end subroutine do_ice_uvic 
-! EOC
+   end subroutine do_ice_uvic 
+!EOC
 !-----------------------------------------------------------------------
-! put any internal subroutines below here
 !-----------------------------------------------------------------------
-
+   ! put any internal subroutines below here
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 !BOP
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)   
+   subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tice,I_0)   
    
 ! !DESCRIPTION:
 !
@@ -652,7 +653,7 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 !         nslay=max(1,nint(ice_hs/thicklay))
 !         nslay=min(nslay,nilay-1)
 
-!***Temporary fix***
+!---Temporary fix---
 
 ! --- ONLY ONE SNOW LAYER USED
 ! --- Do not change this until a conservative method for reapportioning
@@ -661,7 +662,7 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 
    nslay=1
 
-!***Temporary fix***
+!---Temporary fix---
 !
 !.......thickness of snow layers
       snlaythick=ice_hs/float(nslay)
@@ -875,21 +876,21 @@ subroutine therm1d(nilay,Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,Pari,Tic
 !
 !    LEVEL1'end therm1d'
 
-return
+   return
 
-end subroutine therm1d
+   end subroutine therm1d
 
-!EOC!-----------------------------------------------------------------------
+!EOC-----------------------------------------------------------------------
 
 !BOP
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
+   subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
 
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to solve 1-dimensional heat diffusion equation using a 
 !  generalized Crank-Nicholson or implicit algorithm which allows
 !  arbitrary spacing of layers and spatially varying diffusion
@@ -908,7 +909,7 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
 !
 !  NOTE: minimum number of layers is 2 (this is required so that flux
 !        boundary conditions can be specified at both boundaries).
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
    IMPLICIT NONE
@@ -1052,26 +1053,27 @@ subroutine cndiffus(bctype,bcs,nilay,dzi,rhoCp,Cond,Sint,Tice)
 !
 !    LEVEL1'end cndiffus'
 
-return
+   return
 
-end subroutine cndiffus
-!EOC!-----------------------------------------------------------------------
+   end subroutine cndiffus
+!EOC
+!-----------------------------------------------------------------------
 
 !BOP
 !
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine trisol(C,R,n,Tice)
+   subroutine trisol(C,R,n,Tice)
 !
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to solve tri-diagonal matrix. Based on algorithm
 !  described in Press et al. ("Numerical Recipies", Cambridge
 !  University Press, 1986, pp. 40-41).
 
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
    IMPLICIT NONE
@@ -1146,10 +1148,10 @@ subroutine trisol(C,R,n,Tice)
 !
 !    LEVEL1'end trisol'
 
-return
+   return
 
 
-end subroutine trisol
+   end subroutine trisol
 !EOC!-----------------------------------------------------------------------
 
 !BOP
@@ -1157,17 +1159,17 @@ end subroutine trisol
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
+   subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
                      TopMelt,BotGrowth,BotMelt,Hmix,ohflux)
 !
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to calculate growth or melt at the top and bottom of a 
 !  1-dimensional slab of snow/sea ice given the calculated surface and 
 !  bottom fluxes. Also checks for submergence of ice surface and forms
 !  'snow ice' if neccessary.
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
    IMPLICIT NONE
@@ -1358,7 +1360,7 @@ subroutine growthtb(rhowater,nilay,rhoCp,dzi,Tice,TopGrowth,TerMelt, &
    
       return  
 
-end subroutine growthtb
+   end subroutine growthtb
 
 !EOC!-----------------------------------------------------------------------
 
@@ -1370,11 +1372,11 @@ end subroutine growthtb
 !subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
      !                TTss,airt,rh,cloud,ice_hi,ice_hs,&
      !                lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
-subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
+   subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
 !
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to calculate surface energy budget. Includes calculation of 
 !  surface fluxes from meteorological forcing data. 
 !  NSnote: replaced original call fluxform,which calculated humidity,
@@ -1383,7 +1385,7 @@ subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
 !        calling airt, rather than airtk in sebudget and hence open_water 
 !        and nr_iterate and the transfer of extra variables, e.g. methods 
 
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
    IMPLICIT NONE
@@ -1459,7 +1461,7 @@ subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
 
    return
 
-end subroutine sebudget
+   end subroutine sebudget
 
 !EOC!-----------------------------------------------------------------------
 
@@ -1468,15 +1470,15 @@ end subroutine sebudget
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine surfmelt(Ts,TopMelt)
+   subroutine surfmelt(Ts,TopMelt)
 
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to calculate melt from flux divergence at surface. Available
 !  energy is first used to melt snow, and when snow has disappeared,
 !  remaining energy is used to melt ice. 
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
    IMPLICIT NONE
@@ -1575,12 +1577,12 @@ subroutine surfmelt(Ts,TopMelt)
       return
 
 
-end subroutine surfmelt
+   end subroutine surfmelt
 
 !-----------------------------------------------------------------------
 
 
-subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
+   subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
                   Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi, &
                   Sint,evap,alb,Qfluxes_uvic)
 !subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
@@ -1591,7 +1593,7 @@ subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
                         !                        
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 !  Subroutine to perform Newton-Raphson iteration to solve for a
 !  surface temperature consistent with the surface energy budget
 !  including conductive heat flux. If no solution is found in
@@ -1602,7 +1604,7 @@ subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
 !  temperature is defined as the average temperature of the top layer.
 !  This prevents rapid fluctuations in surface temperature and so
 !  allows a longer time step to be taken.
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 
 
 ! !USES:
@@ -1639,13 +1641,13 @@ subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
 !  adjusted to GOTM F90 Nadja Steiner Dec 2008
 !  Original author(s):  Gregory M. Flato - Canadian Centre for 
 !                                          Climate Modelling and Analysis
-interface
-   subroutine Qfluxes_uvic(T,qh,qe,qb)
-      integer, parameter                   :: rk = kind(1.d0)
-      real(rk), intent(in)                 :: T
-      real(rk), intent(out)                :: qh,qe,qb
-   end subroutine
-end interface
+   interface
+      subroutine Qfluxes_uvic(T,qh,qe,qb)
+         integer, parameter                   :: rk = kind(1.d0)
+         real(rk), intent(in)                 :: T
+         real(rk), intent(out)                :: qh,qe,qb
+      end subroutine
+   end interface
 
    !
 !BOC
@@ -1939,9 +1941,9 @@ end interface
 !
 !    LEVEL1'end nr_iterate'
 
-return
+   return
 
-end subroutine nr_iterate 
+   end subroutine nr_iterate 
 
 !EOC!-----------------------------------------------------------------------
 
@@ -1950,11 +1952,11 @@ end subroutine nr_iterate
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
+   subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,precip_i)
 !
 ! !DESCRIPTION:
 !
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! Subroutine to calculate surface energy budget and subsequent change
 ! in mixed layer heat content under open water conditions. If mixed
 ! layer temperature falls below freezing, ice is formed.
@@ -1967,7 +1969,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
 ! whether ice must be created in the case the sea surface temperature 
 ! [TSS from GOTM] is at the freezing point. In this case some ice 
 ! mass is added in this routine
-!*************************************************************************
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:                 
    IMPLICIT NONE
@@ -1999,33 +2001,33 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
 
 !EOP
 !-----------------------------------------------------------------------
-   !LEVEL1'open_water'
-   !
-   !
-   !   Calculate the surface energy budget components
-   !   We use the thickness of the first layer instead
-   !   of 'depmix' in calculations
-   ! check, can we get mixed layer and Tmix from GOTM? 
-   ! watch consistency for removal of heat
-   ! NSnote why set to Tice(1), ok if there is ice, but what if not? 
-   ! Answer:should be Tmix if open water before - 
-   ! used so Tmix (or TSS) does not need to be transferred 
+!LEVEL1'open_water'
+!
+!
+!   Calculate the surface energy budget components
+!   We use the thickness of the first layer instead
+!   of 'depmix' in calculations
+! check, can we get mixed layer and Tmix from GOTM? 
+! watch consistency for removal of heat
+! NSnote why set to Tice(1), ok if there is ice, but what if not? 
+! Answer:should be Tmix if open water before - 
+! used so Tmix (or TSS) does not need to be transferred 
    
          Sni=6.0D00
    
-   !      Tmix=Tfreezi+Hmix/(rCpmix*depmix)
+!      Tmix=Tfreezi+Hmix/(rCpmix*depmix)
          Tmix=(TSS+kelvin)+Hmix/(rCpmix*hSS)
-   !  Set all 'ice' temperatures to be the mixed layer temperature
-   ! (only the surface value has any real meaning in this case, 
-   ! since there is actually no ice yet)
-   !  
+!  Set all 'ice' temperatures to be the mixed layer temperature
+! (only the surface value has any real meaning in this case, 
+! since there is actually no ice yet)
+!  
          do k=1,nilay+1
             Tice(k)=Tmix
          enddo
    
-   !   Check if mixed layer temperature is below freezing. If so,
-   !   create some ice which is assumed to be isothermal at the 
-   !   freezing temperature initially 
+!   Check if mixed layer temperature is below freezing. If so,
+!   create some ice which is assumed to be isothermal at the 
+!   freezing temperature initially 
    
          if(Tmix .lt. Tfreezi) then
             
@@ -2036,28 +2038,28 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
    !reset TSS here!!!  
             TSS=Tmix-kelvin
    
-   !   New ice salinity
+!   New ice salinity
             
             if(ice_salt) then
                Sni=4.606D+00+0.91603D+00/hh0
             endif
             Sice_bulk=Sni
    
-   !   New ice temperature
+!   New ice temperature
    
             do k=1,nilay+1
                Tice(k)=Tfreezi
             enddo
    
-   ! need to set heat and I_0 to zero since this negtive heat has already 
-   ! been used for ice growth, otherwise it will be applied twice - second time in temperature.F90 in gotm  - NScheck I_0 for light!
+! need to set heat and I_0 to zero since this negtive heat has already 
+! been used for ice growth, otherwise it will be applied twice - second time in temperature.F90 in gotm  - NScheck I_0 for light!
             heat=0.D00
             I_0=0.D00 
    
-   ! Note, what is with Fh??? even if only for accounting
-   !         Fh=
+! Note, what is with Fh??? even if only for accounting
+!         Fh=
           else
-            !just open water, no ice existing, no melt or growth
+!just open water, no ice existing, no melt or growth
             Tice=Tfreezi
             dmsi=0 
             Fh=0 
@@ -2072,7 +2074,7 @@ subroutine open_water(nilay,I_0,Sice_bulk,Hmix,Tice,hSS,TSS,Fh,heat,precip,preci
          precip_i=precip !H!
       
       return
-end subroutine open_water
+   end subroutine open_water
 
 !EOP
 !-----------------------------------------------------------------------
@@ -2081,7 +2083,7 @@ end subroutine open_water
 ! !IROUTINE: ice salinity profile for the sea-ice model
 !
 ! !INTERFACE:
-subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
+   subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
                                  rhoice,rhosnow,rhow,rhof,zi,Tice,Sice_bulk,Ff,Fs, &
                                  higs,higb,himb,hims,himi)
 !DESCRIPTION:
@@ -2291,7 +2293,7 @@ subroutine saltice_prof_simple(dti,nilay,SSS,simasso,snmasso,meltmasso, &
    
    
       return      
-end subroutine saltice_prof_simple
+   end subroutine saltice_prof_simple
 
 !-----------------------------------------------------------------------
 !EOP
@@ -2301,7 +2303,7 @@ end subroutine saltice_prof_simple
 ! !IROUTINE: Calculation of ice/snow albedo
 !
 ! !INTERFACE:
-subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
+   subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
 !
 ! !DESCRIPTION:
 !  calculation of ice/snow albedo taken out of original sebudget routine. 
@@ -2426,13 +2428,13 @@ subroutine albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,TTss)
                fluxt=fluxt+I_0_tmp
       
                alb=Asnow*albsnow+Aice*albice+Amelt*albmelt
-      !
-      !...end snow_dist
-      !
+!
+!...end snow_dist
+!
       
          return
 
-end subroutine albedo_ice_uvic
+   end subroutine albedo_ice_uvic
 
 
 !-----------------------------------------------------------------------
@@ -2454,7 +2456,7 @@ end subroutine albedo_ice_uvic
 ! !USES:
 !  use ncdfout, only: close_ncdf
 
-      IMPLICIT NONE
+   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
 !
@@ -2487,7 +2489,7 @@ end subroutine albedo_ice_uvic
 ! !IROUTINE: inverse complementary error function
 !
 ! !INTERFACE:
-real function erfc(x)
+   real function erfc(x)
 
 !DESCRIPTION: Note: for FORTRAN2008 and higher ERFC is an 
 !                intrinsic Fortran function!
@@ -2528,7 +2530,7 @@ end function erfc
 ! !IROUTINE: inverse complementary error function
 !
 ! !INTERFACE:
-real function inverfc(y)
+   real function inverfc(y)
 
 !DESCRIPTION:
 
@@ -2608,7 +2610,7 @@ real function inverfc(y)
          end if
 
              return
-end function inverfc 
+   end function inverfc 
 
 !EOF
 !-----------------------------------------------------------------------
@@ -2617,7 +2619,7 @@ end function inverfc
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-real function W(y)
+   real function W(y)
 !
 !DESCRIPTION: W???
 !
@@ -2641,7 +2643,7 @@ real function W(y)
       W=-1.D+00-sigma-2.D+00/M1*(1.D+00-1.D+00/(1.D+00+ &
       ((M1*sqrt(sigma/2.D+00))/(1.D+00+M2*sigma*exp(M3*sqrt(sigma))))))
 
-end function W
+   end function W
 !EOF
 !----------------------------------------------------------------------
 
@@ -2650,13 +2652,13 @@ end function W
 !
 ! !INTERFACE:
 
-real function swkappas(Tin)
+   real function swkappas(Tin)
 !DESCRIPTION:
 
 !USES:
-             IMPLICIT NONE
+      IMPLICIT NONE
 !INPUT PARAMETERS:
-             real(rk), intent(in) :: Tin
+      real(rk), intent(in) :: Tin
 ! !REVISION HISTORY:
 !  Original author(s): 
 !
@@ -2670,13 +2672,14 @@ real function swkappas(Tin)
 !test
 !             swkappas=1.5               
  
-end function swkappas
+   end function swkappas
 !EOF
 !----------------------------------------------------------------------
-
-
-
-real function swkappai(Tin)
+!BOF
+! !IROUTINE: 
+!
+! !INTERFACE:
+   real function swkappai(Tin)
 !DESCRIPTION:
 
 !USES:
@@ -2695,7 +2698,7 @@ real function swkappai(Tin)
 !test
 !             swkappai=1.5           
 
-end function swkappai
+   end function swkappai
 !EOF
 !----------------------------------------------------------------------
 
@@ -2704,13 +2707,13 @@ end function swkappai
 !
 ! !INTERFACE:
 
-real function transs(Tin)
+   real function transs(Tin)
 !DESCRIPTION:
 
 !USES:
-      implicit none
+   implicit none
 !INPUT PARAMETERS:
-      real(rk), intent(in) :: Tin
+   real(rk), intent(in) :: Tin
 ! !REVISION HISTORY:
 !  Original author(s): 
 !
@@ -2723,7 +2726,7 @@ real function transs(Tin)
    !test
 !            transs=0.05
 
-end function transs
+   end function transs
 !EOF
 !----------------------------------------------------------------------
 !BOF
@@ -2731,7 +2734,7 @@ end function transs
 !
 ! !INTERFACE:
 
-real function transi(Tin)
+   real function transi(Tin)
 !DESCRIPTION:
 
 !USES:
@@ -2753,11 +2756,11 @@ real function transi(Tin)
       transi=((transim+transif)+(transim-transif)*tanh(Tin-273.15D+00))/2.D+00
 !H!end
 
-end function transi
+   end function transi
 !EOF
 
 
-   end module stim_flato
+end module stim_flato
 
 !-----------------------------------------------------------------------
 ! Copyright by the GETM-team under the GNU Public License - www.gnu.org
