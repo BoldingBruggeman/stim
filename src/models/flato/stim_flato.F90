@@ -1,57 +1,57 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: stim_flato --- Flato&Brown thermodynamic ice model
+! MODULE: stim_flato --- Flato&Brown thermodynamic ice model
 ! \label{sec:stim_flato}
 !
-! !INTERFACE
+! INTERFACE
 module stim_flato
 !
-! !DESCRIPTION:
-!  This module is based on the 1-D thermodynamic sea ice model 
-!  (ONE_D_THERMOv1.0) by Greg Flato (Flato and Brown, 1996. JGR, 101(C10)) 
-!  and modified to fit the GOTM structure.
-!  It performs a surface energy budget calculation to get net flux at ice, 
-!  snow or open water surface, solves the 1-D heat conduction problem using 
-!  an implicit finite difference scheme with the ice/snow slab discretized 
-!  into an arbitrary number of thickness layers (presently configured for only 
-!  one snow layer). A Newton-Raphson iterative scheme is used to solve for the 
-!  surface temperature which appears non-linearly in both surface and 
-!  conductive fluxes. Surface melt is calculated to use up the net incoming 
-!  energy flux at the surface with the surface temperature fixed at the 
-!  melting point. Additional melt may occur to restore temperatures to the 
-!  freezing point where it is exceeded. Under cooling conditions, the upper 
-!  surface has a flux boundary condition with surface growth occuring only 
-!  if snowload causes surface flooding. Growth at the ice underside is 
-!  calculated so as to balance the flux at the bottom where the temperature 
-!  remains at the freezing point of sea water. If ice melts completely, 
-!  incoming heat is stored in the mixed layer {\sl fixed MLD in original code} 
-!  which must cool to the freezing point before new ice can form. Initial 
-!  growth of very thin ice is calculated assuming a linear temperature profile.
+! DESCRIPTION:
+!!  This module is based on the 1-D thermodynamic sea ice model 
+!!  (ONE_D_THERMOv1.0) by Greg Flato (Flato and Brown, 1996. JGR, 101(C10)) 
+!!  and modified to fit the GOTM structure.
+!!  It performs a surface energy budget calculation to get net flux at ice, 
+!!  snow or open water surface, solves the 1-D heat conduction problem using 
+!!  an implicit finite difference scheme with the ice/snow slab discretized 
+!!  into an arbitrary number of thickness layers (presently configured for only 
+!!  one snow layer). A Newton-Raphson iterative scheme is used to solve for the 
+!!  surface temperature which appears non-linearly in both surface and 
+!!  conductive fluxes. Surface melt is calculated to use up the net incoming 
+!!  energy flux at the surface with the surface temperature fixed at the 
+!!  melting point. Additional melt may occur to restore temperatures to the 
+!!  freezing point where it is exceeded. Under cooling conditions, the upper 
+!!  surface has a flux boundary condition with surface growth occuring only 
+!!  if snowload causes surface flooding. Growth at the ice underside is 
+!!  calculated so as to balance the flux at the bottom where the temperature 
+!!  remains at the freezing point of sea water. If ice melts completely, 
+!!  incoming heat is stored in the mixed layer {\sl fixed MLD in original code} 
+!!  which must cool to the freezing point before new ice can form. Initial 
+!!  growth of very thin ice is calculated assuming a linear temperature profile.
 !
-!  Further documentation is provided by comments in the code and headers
-!  in each subroutine.
-!-----------------------------------------------------------------------
-! original code written by Gregory M. Flato, Canadian Centre for Climate 
-! Modelling and Analysis, Environment Canada 
-!
-!  ver. 1.05 - G.Flato - 29/Oct/99   - last change before transfer to 
-!                                      implement module in GOTM
-!  ver. 2.0 - N.Steiner - Nov/08     - conversion to subroutine as 
-!                                      part of GOTM
-!  ver. 3.0 - N. Steiner - Jul/14    - recodng for gotm git structure
-!
-!  ver. 3.1 - N. Steiner - Nov/14    - include saltflux from 
-!                                      Vancoppenolle et al 2009 - in prog.
-!  ver. 3.2 - N. Steiner - Nov/14    - correct heat transfer for open water 
-! ( remove double calc inside and outside the ice module, 
-! recorrect I_0 for ice case 
-!  ver. 3.3 - N. Steiner - Dec/14    - Implement Abraham et al. 2014 
-!                                 radiative transfers 
-!                                    - include functions for extinction 
-!                                      and transmissivity
-! 
-!
+!!  Further documentation is provided by comments in the code and headers
+!!  in each subroutine.
+!!-----------------------------------------------------------------------
+!! original code written by Gregory M. Flato, Canadian Centre for Climate 
+!! Modelling and Analysis, Environment Canada 
+!!
+!!  ver. 1.05 - G.Flato - 29/Oct/99   - last change before transfer to 
+!!                                      implement module in GOTM
+!!  ver. 2.0 - N.Steiner - Nov/08     - conversion to subroutine as 
+!!                                      part of GOTM
+!!  ver. 3.0 - N. Steiner - Jul/14    - recodng for gotm git structure
+!!
+!!  ver. 3.1 - N. Steiner - Nov/14    - include saltflux from 
+!!                                      Vancoppenolle et al 2009 - in prog.
+!!  ver. 3.2 - N. Steiner - Nov/14    - correct heat transfer for open water 
+!! ( remove double calc inside and outside the ice module, 
+!! recorrect I_0 for ice case 
+!!  ver. 3.3 - N. Steiner - Dec/14    - Implement Abraham et al. 2014 
+!!                                 radiative transfers 
+!!                                    - include functions for extinction 
+!!                                      and transmissivity
+!! 
+!!
 ! !USES:
    use stim_variables
   
@@ -66,97 +66,102 @@ module stim_flato
 !
 !
 ! LOCAL VARIABLES: 
-!   rhosnow     - snow density (kg m-3)
-   real(rk), public :: rhosnow
 
-!fixed size variables
+   real(rk), public :: rhosnow
+   !!  snow density (kg m-3)
+
+!----fixed size variables
 !
-!   Iceflux     - a 2-element array of time-step averaged boundary fluxes
-!                  returned from heat conduction scheme, defined as positive
-!                 downward in accordance with vertical coordinate sign
-!                 convention (W m-2)
    real(rk), dimension(2), public :: Iceflux
-!    bctype 	- 2 element array defining upper and lower boundary         
-!                  condition type. bctype(1) refers to upper boundary,
-!                  bctype(2) refers to lower boundary. Negative value
-!                  indicates temperature boundary condition, positive
-!                 value indicates flux boundary condition.
+   !!  a 2-element array of time-step averaged boundary fluxes
+   !!  returned from heat conduction scheme, defined as positive
+   !!  downward in accordance with vertical coordinate sign
+   !!  convention (W m-2)
    real(rk), dimension(2) :: bctype
-!    bcs 	    - 2 element array containing boundary condition values.  
-!                  bcs(1) refers to upper boundary, bcs(2) refers to lower
-!                  boundary. If temperature boundary condition, units: (K),
-!                  if flux boundary condition, units: (W m-2)
+   !!  2 element array defining upper and lower boundary         
+   !!  condition type. bctype(1) refers to upper boundary,
+   !!  bctype(2) refers to lower boundary. Negative value
+   !!  indicates temperature boundary condition, positive
+   !!  value indicates flux boundary condition.
    real(rk), dimension(2) :: bcs
-!    dti        - timestep in the ice model (usually set to ocean time step)
+   !!  2 element array containing boundary condition values.  
+   !!  bcs(1) refers to upper boundary, bcs(2) refers to lower
+   !!  boundary. If temperature boundary condition, units: (K),
+   !!  if flux boundary condition, units: (W m-2)
    real(rk) :: dti
+   !! timestep in the ice model (usually set to ocean time step)
+
 !
 !----fluxes 
-  ! qb           - long wave back radiation (in-out) (W m-2)	
    real(rk), public :: qb
-   !qe           - latent heat flux into ice (W m-2)		
-   real(rk) :: qe                                      
-  ! qh           - sensible heat flux into ice (W m-2)		
-   real(rk) :: qh
-!   tx,ty        - surface stress components in x and y direction (Pa)!check
+   !! long wave back radiation (in-out) (W m-2)	
+   real(rk) :: qe 
+   !! latent heat flux into ice (W m-2)		
+   real(rk) :: qh                                 
+   !! sensible heat flux into ice (W m-2)		
    real(rk) :: tx,ty
-!   PenSW        - short wave radiation that penetrates the surface (W m-2)
+   !! surface stress components in x and y direction (Pa)!check
    real(rk), public :: PenSW
-!   fluxt        - net flux at surface of ice/snow slab calculated from
-!                  surface energy budget and used as upper boundary condition
-!                  in heat conduction solution. NOTE: this does not include
-!                  'PenSW' which is taken as a distributed source within the
-!                  slab (W m-2)
+   !! short wave radiation that penetrates the surface (W m-2)
    real(rk) :: fluxt
-!   simass       - ice mass per unit area (kg m-2)
+   !! net flux at surface of ice/snow slab calculated from
+   !! surface energy budget and used as upper boundary condition
+   !! in heat conduction solution. NOTE: this does not include
+   !! 'PenSW' which is taken as a distributed source within the
+   !! slab (W m-2)
    real(rk), public :: simass
-!   snmass       - snow mass per unit area (kg m-2)
+   !! ice mass per unit area (kg m-2)
    real(rk), public :: snmass
-!   simasso      - ice mass per unit area at previous timestep(kg m-2)
+   !! snow mass per unit area (kg m-2)
    real(rk) :: simasso
-!   snmasso      - ice mass per unit area at previous timestep (kg m-2) !snow mass? 
+   !! ice mass per unit area at previous timestep(kg m-2)
    real(rk) :: snmasso
-!   Ts           - upper surface temperature (K)
+   !! ice mass per unit area at previous timestep (kg m-2) !snow mass? 
    real(rk) :: Ts
-!   Tsav         - average snow layer temperature (K)
-   real(rk) :: Tsav  
+   !! upper surface temperature (K)
+   real(rk) :: Tsav 
+   !! average snow layer temperature (K)
+   
    
 ! Ice salinity
-!   ice_salt     - logical variable to turn on/off the salt profile scheme
    logical,  public :: ice_salt=.false.
+   !! logical variable to turn on/off the salt profile scheme
+
 ! Atmospheric forcing
-!   sfall        - snow fall rate (m s-1)
    real(rk), public :: sfall
-!   airtk        - surface air temperature (K)
+   !! snow fall rate (m s-1)
    real(rk) :: airtk
-! coefficients for 
+   !! surface air temperature (K)
    real(rk), dimension(5,3) :: C
-! coefficients for RHS vector
+   !! coefficients for 
    real(rk), dimension(5,3) :: R
-!  dto           - time step from GOTM (dt)
+   !! coefficients for RHS vector
    real(rk) :: dto
-! nslay number of snow layers
+   !! time step from GOTM (dt)
    integer, public :: nslay
+   !! nslay number of snow layers
+   
 !Snow_dist: Snowdistribution variables:
-!  Asnow         - Area which is covered with snow 
    real(rk), public :: Asnow
-!  Aice          - Area which is covered with ice
+   !! Area which is covered with snow 
    real(rk), public :: Aice
-!  Amelt         - Area which is covered with melt pond
+   !! Area which is covered with ice
    real(rk), public :: Amelt
-!  hsmax         - Maximal height of snow for the calculations of Weibull-distributed snow
+   !! Area which is covered with melt pond
    real(rk) :: hsmax = hsmin
-!  albice        - Albedo of ice
+   !! Maximal height of snow for the calculations of Weibull-distributed snow
    real(rk) :: albice
-!  albsnow       - Albedo of snow
+   !! Albedo of ice
    real(rk):: albsnow
-!   meltmass      - melt pond mass per unit area (kg m-2)
+   !! Albedo of snow
    real(rk), public  :: meltmass
-!   meltmasso     - melt pond mass per unit area at previous timestep(kg m-2)
+   !! melt pond mass per unit area (kg m-2)
    real(rk) :: meltmasso
-!  Pi !NSnote read from gotm?
+   !! melt pond mass per unit area at previous timestep(kg m-2)
    real(rk), parameter :: pi=4.D+00*atan(1.D+00)
-
-
+   !!  Pi 
+   !NSnote read from gotm?
+   
 ! !REVISION HISTORY:
 !  Original author: Michael Winton 
 !  Author(s): Adolf Stips, Jesper Larsen and Karsten Bolding
@@ -172,6 +177,7 @@ module stim_flato
 ! !INTERFACE:
 !KB   subroutine init_stim_flato(ice_cover,dz,dt,Tw,S,Ta,precip)  
    subroutine init_stim_flato() 
+!! Initialise the uvic-ice model
 !
 ! !DESCRIPTION:
 !
@@ -180,7 +186,7 @@ module stim_flato
 ! 
 ! !LOCAL VARIABLES:
 !
-   integer             :: k,rc    
+   integer             :: k,rc  
 ! !LOCAL PARAMETERS:
 
 !EOP
@@ -200,7 +206,7 @@ module stim_flato
 ! !INPUT PARAMETERS:
 
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding, Nadja Steiner based on original model from Greg Flato
+!!  Original author(s): Karsten Bolding, Nadja Steiner based on original model from Greg Flato
 !
 
    ! check if the snow distribution is set
@@ -251,7 +257,7 @@ module stim_flato
 
 !BOP 
 !
-! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
+! ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
 !
 ! !INTERFACE: 
    subroutine do_ice_uvic(dto,h,julianday,secondsofday, &
@@ -259,7 +265,7 @@ module stim_flato
                       ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                       Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                       TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,&
-                      swr_0,precip_i,sfall_i,Qfluxes_uvic)
+                      swr_0,precip_i,sfall_i,Qfluxes_uvic)          
 !subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
                     !    I_0,airt,airp,rh,u10,v10,precip,cloud, &
                      !   TSS,SSS,rhowater,rho_0, &
@@ -267,86 +273,116 @@ module stim_flato
                      !   ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
                      !   Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                      !   TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i,Qfluxes_uvic)
-! !DESCRIPTION:
-!  Update the sea-ice conditions: if no ice, call open_water and determine 
-!  new ice growth, if ice exists calculate growth or melt. The model has 
-!  nilay ice layers and one snow layer.  
-!  This subroutine updates the sea ice prognostic variables. The updated
-!  variables are ice_hi, ice_hs,ice_hm, Tice(nilay+1), Cond(nilay),rhoCp(nilay), 
-!  Sint(nilay+1), dzi(nilay), zi(nilay+1), Told(nilay+1),ts,alb, heat 
-!  melt and growth terms per timestep are transferred out for potential use in 
-!  ice algae model: TopMelt,BotMelt,TerMelt,TopGrowth,BotGrowth, note these are 
-!  not accumulated over the run as in the original code from GF
+! DESCRIPTION:
+!!  Update the sea-ice conditions: if no ice, call open_water and determine 
+!!  new ice growth, if ice exists calculate growth or melt. The model has 
+!!  nilay ice layers and one snow layer.  
+!!  This subroutine updates the sea ice prognostic variables. The updated
+!!  variables are ice_hi, ice_hs,ice_hm, Tice(nilay+1), Cond(nilay),rhoCp(nilay), 
+!!  Sint(nilay+1), dzi(nilay), zi(nilay+1), Told(nilay+1),ts,alb, heat 
+!!  melt and growth terms per timestep are transferred out for potential use in 
+!!  ice algae model: TopMelt,BotMelt,TerMelt,TopGrowth,BotGrowth, note these are 
+!!  not accumulated over the run as in the original code from GF
+! REVISION HISTORY:
+!!  Original author(s): Nadja Steiner, modified from ice_thermo by Greg Flato
+!!  based on GOTM template
 
-
-! !REVISION HISTORY:
-!  Original author(s): Nadja Steiner, modified from ice_thermo by Greg Flato
-!  based on GOTM template
 ! !USES:
    implicit none
 !
 ! !INPUT PARAMETERS:
-   real(rk), intent(in)     :: dto ! ocean timestep (sec) 
-   real(rk), intent(in)    :: h  ! sea surface layer thickness 
-   integer, intent(in)     :: julianday ! this julian day 
-   integer, intent(in)     :: secondsofday ! seconds for this day 
+   real(rk), intent(in)     :: dto 
+      !! ocean timestep (sec) 
+   real(rk), intent(in)    :: h  
+      !! sea surface layer thickness 
+   integer, intent(in)     :: julianday 
+      !! this julian day 
+   integer, intent(in)     :: secondsofday 
+      !! seconds for this day 
   ! real(rk), intent(in)    :: lon    ! longitude for this point 
   ! real(rk), intent(in)    :: lat ! latitude for this point 
-   real(rk), intent(inout)  :: I_0   ! shortwave radiation at sea surface  
-   real(rk), intent(in)     :: airt  ! 2m temperature
+   real(rk), intent(inout)  :: I_0   
+      !! shortwave radiation at sea surface  
+   real(rk), intent(in)     :: airt  
+      !! 2m temperature
   ! real(rk), intent(in)     :: airp  ! sea surface pressure
   ! real(rk), intent(in)    :: rh    ! relative humidity 
   ! real(rk), intent(inout)  :: u10   ! 10 m wind u-component
   ! real(rk), intent(inout)  :: v10   ! 10 m wind v-component
-   real(rk), intent(inout)  :: precip! freshwater precipitation (m/s) 
+   real(rk), intent(inout)  :: precip
+      !! freshwater precipitation (m/s) 
   ! real(rk), intent(in)     :: cloud ! cloud cover
-   real(rk), intent(inout)  :: TSS     ! sea surface temperature
-   real(rk), intent(in)     :: SSS     ! sea surface salinity
-   real(rk), intent(in)      :: rhowater   ! sea surface layer density 
-   real(rk), intent(in)      :: rho_0 ! reference density 
+   real(rk), intent(inout)  :: TSS     
+      !! sea surface temperature
+   real(rk), intent(in)     :: SSS     
+      !! sea surface salinity
+   real(rk), intent(in)      :: rhowater   
+      !! sea surface layer density 
+   real(rk), intent(in)      :: rho_0 
+      !! reference density 
    !integer, intent(in)       :: longwave_radiation_method ! method for LW  
    !integer, intent(in)       :: hum_method ! method for humidity
   ! integer, intent(in)       :: fluxes_method ! method for fluxes
     
    ! !INPUT/OUTPUT PARAMETERS:
-   real(rk), intent(inout)   :: ice_hi    ! ice thickness (m)
-   real(rk), intent(inout)   :: ice_hs    ! snow thickness (m)
-   real(rk), intent(inout)   :: ice_hm    ! meltpond thickness (m)
-   real(rk), intent(inout)   :: Tice(nilay+1)  ! ice layer temperature Tice(nilay +1)(deg-C)
-   real(rk), intent(inout)   :: Cond(nilay)  ! thermal conductivities defined at the 
-                               ! centre of each layer Cond(nilay)(W m-1 K-1)
-   real(rk), intent(inout)   :: rhoCp(nilay) ! volumetric heat capacities defined at 
-                               ! the centre of each layer rhoCp(nilay)(J m-3 K-1)
-   real(rk), intent(inout)   :: Sint(nilay+1) ! internal heat source due to penetrating 
-                                ! short wave radiation Sint(nilay)(W m-3)
-   real(rk), intent(inout)   :: dzi(nilay) !layer thicknesses dzi(nilay)(m)
-   real(rk), intent(inout)   :: zi(nlmax) !layer interface depths zi(nilay+1)(m)
-   real(rk), intent(inout)   :: Told(nilay+1) !ice temperature two time steps 
-                                ! previous to calculation of outgoing 
-                                ! long-wave flux in SEBUDGET Told (nilay+1) (K)
-   real(rk), intent(inout)   :: alb   ! surface albedo - water, ice/snow-total
-   real(rk), intent(inout)   :: heat  ! surface heat flux
+   real(rk), intent(inout)   :: ice_hi    
+      !! ice thickness (m)
+   real(rk), intent(inout)   :: ice_hs    
+      !! snow thickness (m)
+   real(rk), intent(inout)   :: ice_hm    
+      !! meltpond thickness (m)
+   real(rk), intent(inout)   :: Tice(nilay+1)  
+      !! ice layer temperature Tice(nilay +1)(deg-C)
+   real(rk), intent(inout)   :: Cond(nilay)  
+      !! thermal conductivities defined at the centre of each layer Cond(nilay)(W m-1 K-1)
+   real(rk), intent(inout)   :: rhoCp(nilay) 
+      !! volumetric heat capacities defined at the centre of each layer rhoCp(nilay)(J m-3 K-1)
+   real(rk), intent(inout)   :: Sint(nilay+1) 
+      !! internal heat source due to penetrating short wave radiation Sint(nilay)(W m-3)
+   real(rk), intent(inout)   :: dzi(nilay) 
+      !! layer thicknesses dzi(nilay)(m)
+   real(rk), intent(inout)   :: zi(nlmax) 
+      !! layer interface depths zi(nilay+1)(m)
+   real(rk), intent(inout)   :: Told(nilay+1) 
+      !! ice temperature two time steps previous to calculation 
+      !! of outgoing long-wave flux in SEBUDGET Told (nilay+1) (K)
+   real(rk), intent(inout)   :: alb   
+      !! surface albedo - water, ice/snow-total
+   real(rk), intent(inout)   :: heat  
+      !! surface heat flux
 
 !NSnote, check - maybe adjust units...
-   real(rk), intent(inout)  ::  Sice_bulk   ! bulk ice salinity (ppt)
-   real(rk), intent(inout)  ::  Fh   ! interface heat flux (W/m2)
-   real(rk), intent(out)  ::  Ff   ! interface freshwater flux (m s-1)
-   real(rk), intent(out)  ::  Fs   ! interface salt flux - (ppt m s-1)
+   real(rk), intent(inout)  ::  Sice_bulk   
+      !! bulk ice salinity (ppt)
+   real(rk), intent(inout)  ::  Fh   
+      !! interface heat flux (W/m2)
+   real(rk), intent(out)  ::  Ff   
+      !! interface freshwater flux (m s-1)
+   real(rk), intent(out)  ::  Fs   
+      !! interface salt flux - (ppt m s-1)
    real(rk), intent(out)   :: Pari(nilay+1) 
-                       !photosynthatically available radiation in ice (W m-2)
+      !! photosynthatically available radiation in ice (W m-2)
 
 ! !OUTPUT PARAMETERS:
-   real(rk), intent(out)     :: TopMelt ! top melting - ice mass melted at the surface (snow+ice)  at time step(m)
-   real(rk), intent(out)     :: Botmelt ! bottom melting - ice mass melted at the ice bottom at time step(m) 
-   real(rk), intent(out)     :: TerMelt ! internal melting - ice mass melted in the ice interior at time step (m) 
-   real(rk), intent(out)     :: TopGrowth ! top growth ice mass growth at slab surface due to snow submersion (m)
-   real(rk), intent(out)     :: BotGrowth ! bottom growth - ice mass growth at the ice bottom at time step (m)     
-   real(rk), intent(out)     :: Hmix !  transferred energy - check  (m)
+   real(rk), intent(out)     :: TopMelt 
+      !! top melting - ice mass melted at the surface (snow+ice)  at time step(m)
+   real(rk), intent(out)     :: Botmelt 
+      !! bottom melting - ice mass melted at the ice bottom at time step(m) 
+   real(rk), intent(out)     :: TerMelt 
+      !! internal melting - ice mass melted in the ice interior at time step (m) 
+   real(rk), intent(out)     :: TopGrowth 
+      !! top growth ice mass growth at slab surface due to snow submersion (m)
+   real(rk), intent(out)     :: BotGrowth 
+      !! bottom growth - ice mass growth at the ice bottom at time step (m)     
+   real(rk), intent(out)     :: Hmix 
+      !!  transferred energy - check  (m)
 !   Hmix        - mixed layer heat storage (J m-2)	=======> accounts only for 
 ! the SWR which crosses the ice slab and reach the water. keep it for now
-   real(rk), intent(out)     :: Aice_i,Asnow_i,Amelt_i ! ice area fraction which is : open ice, snow and 
-                                                ! meltpond, respectively
-   real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! incidental SWR,snowfall
+   real(rk), intent(out)     :: Aice_i,Asnow_i,Amelt_i 
+      !! ice area fraction which is : open ice, snow and 
+      !! meltpond, respectively
+   real(rk), intent(out)     :: swr_0,precip_i,sfall_i !H! 
+      !! incidental SWR,snowfall
 
    interface
       subroutine Qfluxes_uvic(T,qh,qe,qb)
@@ -546,12 +582,12 @@ module stim_flato
    
 ! !DESCRIPTION:
 !
-!  Subroutine to calculate heat conduction through a 1-dimensional slab 
-!  of sea ice of a given thickness for specified boundary conditions.
-!  Parameterization of conductivity and heat capacity follows closely
-!  that of Ebert and Curry (J. Geophys. Res.,98:10085-10109, 1993) and
-!  uses a generalized Crank-Nicholson or implicit algorithm to solve the 
-!  1-dimensional heat conduction problem.
+!!  Subroutine to calculate heat conduction through a 1-dimensional slab 
+!!  of sea ice of a given thickness for specified boundary conditions.
+!!  Parameterization of conductivity and heat capacity follows closely
+!!  that of Ebert and Curry (J. Geophys. Res.,98:10085-10109, 1993) and
+!!  uses a generalized Crank-Nicholson or implicit algorithm to solve the 
+!!  1-dimensional heat conduction problem.
 
 ! !USES:
    
@@ -575,9 +611,9 @@ module stim_flato
 
 !
 ! !REVISION HISTORY:
-!  adjusted to GOTM F90 Nadja Steiner Dec 2008
-!  Original author(s):  Gregory M. Flato - Canadian Centre for 
-!                                          Climate Modelling and Analysis
+!!  adjusted to GOTM F90 Nadja Steiner Dec 2008
+!!  Original author(s):  Gregory M. Flato - Canadian Centre for 
+!!                                          Climate Modelling and Analysis
 
 !
 !BOC
@@ -891,24 +927,24 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to solve 1-dimensional heat diffusion equation using a 
-!  generalized Crank-Nicholson or implicit algorithm which allows
-!  arbitrary spacing of layers and spatially varying diffusion
-!  coefficients. Parameter 'theta' determines whether standard
-!  Crank-Nicholson or implicit algorithm is used.
-!
-!
-!  sketch of grid layout:
-!
-!                          dzi(i-1)       dzi(i)
-!                    ----+---------+--------------+-----
-!                      Tice(i-1)     Tice(i)         Tice(i+1)
-!                         Cond(i-1)      Cond(i)
-!                         rhoCp(i-1)    rhoCp(i)
-!                    rCpav(i-1)  rCpav(i)    rCpav(i+1)
-!
-!  NOTE: minimum number of layers is 2 (this is required so that flux
-!        boundary conditions can be specified at both boundaries).
+!!  Subroutine to solve 1-dimensional heat diffusion equation using a 
+!!  generalized Crank-Nicholson or implicit algorithm which allows
+!!  arbitrary spacing of layers and spatially varying diffusion
+!!  coefficients. Parameter 'theta' determines whether standard
+!!  Crank-Nicholson or implicit algorithm is used.
+!!
+!!
+!!  sketch of grid layout:
+!!
+!!                          dzi(i-1)       dzi(i)
+!!                    ----+---------+--------------+-----
+!!                      Tice(i-1)     Tice(i)         Tice(i+1)
+!!                         Cond(i-1)      Cond(i)
+!!                         rhoCp(i-1)    rhoCp(i)
+!!                    rCpav(i-1)  rCpav(i)    rCpav(i+1)
+!!
+!!  NOTE: minimum number of layers is 2 (this is required so that flux
+!!        boundary conditions can be specified at both boundaries).
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
@@ -1069,9 +1105,9 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to solve tri-diagonal matrix. Based on algorithm
-!  described in Press et al. ("Numerical Recipies", Cambridge
-!  University Press, 1986, pp. 40-41).
+!!  Subroutine to solve tri-diagonal matrix. Based on algorithm
+!!  described in Press et al. ("Numerical Recipies", Cambridge
+!!  University Press, 1986, pp. 40-41).
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
@@ -1165,10 +1201,10 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to calculate growth or melt at the top and bottom of a 
-!  1-dimensional slab of snow/sea ice given the calculated surface and 
-!  bottom fluxes. Also checks for submergence of ice surface and forms
-!  'snow ice' if neccessary.
+!!  Subroutine to calculate growth or melt at the top and bottom of a 
+!!  1-dimensional slab of snow/sea ice given the calculated surface and 
+!!  bottom fluxes. Also checks for submergence of ice surface and forms
+!!  'snow ice' if neccessary.
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
@@ -1377,8 +1413,8 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to calculate surface energy budget. Includes calculation of 
-!  surface fluxes from meteorological forcing data. 
+!!  Subroutine to calculate surface energy budget. Includes calculation of 
+!!  surface fluxes from meteorological forcing data. 
 !  NSnote: replaced original call fluxform,which calculated humidity,
 !        sensible, latent and incoming longwave heat flux with gotm call 
 !        sequence: humidity, back_radiation, airsea_fluxes - this also meant 
@@ -1475,9 +1511,9 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to calculate melt from flux divergence at surface. Available
-!  energy is first used to melt snow, and when snow has disappeared,
-!  remaining energy is used to melt ice. 
+!!  Subroutine to calculate melt from flux divergence at surface. Available
+!!  energy is first used to melt snow, and when snow has disappeared,
+!!  remaining energy is used to melt ice. 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 ! 
 ! !USES:
@@ -1594,16 +1630,16 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-!  Subroutine to perform Newton-Raphson iteration to solve for a
-!  surface temperature consistent with the surface energy budget
-!  including conductive heat flux. If no solution is found in
-!  initial Newton-Raphson iteration, a bisection algorithm is
-!  used.  NOTE: if uppermost layer is greater than 0.1m thick,
-!  surface temperature is defined as the temperature at the surface
-!  Tice(1); however, if uppermost layer is less than 0.1m thick, surface
-!  temperature is defined as the average temperature of the top layer.
-!  This prevents rapid fluctuations in surface temperature and so
-!  allows a longer time step to be taken.
+!!  Subroutine to perform Newton-Raphson iteration to solve for a
+!!  surface temperature consistent with the surface energy budget
+!!  including conductive heat flux. If no solution is found in
+!!  initial Newton-Raphson iteration, a bisection algorithm is
+!!  used.  NOTE: if uppermost layer is greater than 0.1m thick,
+!!  surface temperature is defined as the temperature at the surface
+!!  Tice(1); however, if uppermost layer is less than 0.1m thick, surface
+!!  temperature is defined as the average temperature of the top layer.
+!!  This prevents rapid fluctuations in surface temperature and so
+!!  allows a longer time step to be taken.
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 
 
@@ -1957,10 +1993,10 @@ module stim_flato
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-! Subroutine to calculate surface energy budget and subsequent change
-! in mixed layer heat content under open water conditions. If mixed
-! layer temperature falls below freezing, ice is formed.
-! 
+!! Subroutine to calculate surface energy budget and subsequent change
+!! in mixed layer heat content under open water conditions. If mixed
+!! layer temperature falls below freezing, ice is formed.
+!! 
 ! Check, I am not sure if this is necessary with the GOTM ocean model running, 
 ! but keep for now to see what is done and make sure adjustements are done 
 ! appropriately in GOTM NSt Dec 2008

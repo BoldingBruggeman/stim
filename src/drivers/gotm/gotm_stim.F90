@@ -95,22 +95,13 @@
    
    !flato 
    call branch%get(nilay, 'nilay', 'number of ice layers', '', default=0)
-   !call branch%get(sfall_method, 'sfall_method', 'define how snow fall is determined ','', default=0, &
-                 ! options=
-                 !(/option(1, 'constant snow fall', 'constant'), option(2, 'calculate snowfall from precipitation', &
-                 ! 'precipitation')/))
    call branch%get(sfall_method, 'sfall_method', 'define how snow fall is determined ','', default=0)
    call branch%get(const_sfall,'const_sfall ', 'constant snow fall rate', 'm d^-1', default=0._rk)
    call branch%get(dfact,'dfact', 'drift factor', '', default=0._rk)
    call branch%get(depmix ,'depmix', 'prescribed mixed layer depth', '', default=0._rk)
-  ! call branch%get(sice_method, 'sice_method','define how sea-ice salinity is to be calculated','', default=0, &
-                 ! options=(/option(1, 'cconstant ice salinity', 'constant'), option(2, 'Simple ice salinity profile', 'simple')/))
    call branch%get(sice_method, 'sice_method','define how sea-ice salinity is to be calculated','', default=0)
    call branch%get(const_Sice, 'const_Sice', 'prescribed sea ice salinity', 'ppt', default=0._rk)
    call branch%get(snow_dist,'snow_dist ','logical switch between uniform and Weibull-distributed snow', default=.false.)
-   !call branch%get(distr_type,'distr_type', 'integer to chose the type of distribution', '', default=-1, &
-                !  options=(/option(-1, 'no specific distribution chosen', 'no'), option(0, 'Weibull distribution', 'Weibull'), &
-                !  option(1, 'Reighleigh distribution', 'Reighleigh')/))
    call branch%get(distr_type,'distr_type', 'integer to chose the type of distribution', '', default=-1)
    call branch%get(meltpond,'meltpond', 'If true meltponds are included If false only bare ice is included', default=.false.)
    call branch%get(Ameltmax,'Ameltmax ', 'Maximum meltpond area fraction allowed', '', default=0._rk)
@@ -118,12 +109,6 @@
    call branch%get(hh0, 'hh0', 'initial thickness for S calculation','', default=0._rk)
    call branch%get(ice_hi_i ,'ice_hi_i ', 'initial ice thickness', '', default=0._rk)
    call branch%get(ice_hs_i ,'ice_hs_i ',' initial snow thickness', '',  default=0._rk)
-   !call branch%get(albice_method,'albice_method ', 'define how ice albedo is determined ', '', default=0, &
-           ! options=(/option(1, 'constant albedo (albice_f and albsnow_f)', 'constant'), &
-           ! option(2, 'albice dependent on ice thickness', 'ice thickness constant'), &
-           ! option(3, 'albice and albsnow based on eq12&13 of Flato&Brown1996', 'Flato_Brown1996'), &
-           ! option(4, 'albice and albsnow dependent on temperature (same as transs/transi formulation)', &
-           ! 'transs/transi formulation')/))
    call branch%get(albice_method,'albice_method ', 'define how ice albedo is determined ', '', default=0)
    call branch%get(albice_f, 'albice_f', 'freezing ice albedo','', default=0._rk)
    call branch%get(albmelt,'albmelt',  'melt pond albedo','', default=0._rk)
@@ -264,7 +249,7 @@ allocate(Tice(2))
       case(4)
 #if 1
 !KB         allocate(Tice(2))
-         call init_stim_flato()  !(ta)
+         call init_stim_flato() 
 #else
          LEVEL0 "Flato model is compiled - but execution is disabled"
          LEVEL0 "change line 138 in gotm_stim.F90 - then recompile - "
