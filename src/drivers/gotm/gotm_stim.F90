@@ -42,6 +42,15 @@
 !  the 'ice' namelist
    integer, public                    :: ice_model
 !
+! !PRIVATE DATA MEMBERS:
+   ENUM, BIND(C)
+      ENUMERATOR :: SIMPLE=0
+      ENUMERATOR :: LEBEDEV=1
+      ENUMERATOR :: MYLAKE=2
+      ENUMERATOR :: WINTON=3
+      ENUMERATOR :: BASAL_MELT=4
+   END ENUM
+
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
@@ -84,7 +93,8 @@
                    (/option(0, 'none'), &
                      option(1, 'Lebedev (1938)'), &
                      option(2, 'MyLake'), &
-                     option(3, 'Winton')/))
+                     option(3, 'Winton'), &
+                     option(4, 'Basal_Melt')/))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
    call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
                    'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
@@ -147,6 +157,10 @@ allocate(Tice(2))
          stop 'post_init_stim(): init_stim_winton()'
 #endif
 #endif
+#ifdef STIM_BASAL_MELT
+      case(4)
+!KB         call init_stim_basal_melt()
+#endif
       case default
          stop 'invalid ice model'
    end select
@@ -164,7 +178,7 @@ allocate(Tice(2))
 ! !IROUTINE: do the ice calculations
 !
 ! !INTERFACE:
-   subroutine do_stim(dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+   subroutine do_stim(dz,dt,ustar,Tw,S,Ta,precip,Qsw,Qfluxes)
 !
 ! !DESCRIPTION:
 !
@@ -172,7 +186,7 @@ allocate(Tice(2))
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)    :: dz,dt,Ta,S,precip,Qsw
+   REALTYPE, intent(inout)    :: dz,dt,ustar,Ta,S,precip,Qsw
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE, intent(inout) :: Tw
@@ -191,10 +205,11 @@ allocate(Tice(2))
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Tf
+
+!KB   REALTYPE                  :: ustar=0.001
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
    select case (ice_model)
       case(0)
          Tf = -0.0575*S
@@ -224,6 +239,10 @@ allocate(Tice(2))
          else
             call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
          end if
+#endif
+#ifdef STIM_BASAL_MELT
+      case(4)
+         call do_stim_basal_melt(dz,ustar,Tw,S)
 #endif
       case default
          stop 'invalid ice model'
