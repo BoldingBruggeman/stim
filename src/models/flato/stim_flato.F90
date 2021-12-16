@@ -422,7 +422,15 @@ module stim_flato
       Ff= 0
       Fs= 0
 ! degC to K unit conversion
-   airtk=airt+kelvin
+
+! jpnote: add option for if kelvin is given instead of celcius
+   if (airt .lt. 100.) then
+      airtk  = airt + kelvin  ! airt is given in celcius, need to convert to kelvin
+   else
+      airtk = airt !airt is given in kelvin 
+   end if
+
+   !airtk=airt+kelvin
 
  if(sfall_method .eq. 2) then
 !get snowfall from precipitation
