@@ -266,13 +266,6 @@ module stim_flato
                       Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
                       TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,&
                       swr_0,precip_i,sfall_i,Qfluxes_uvic)          
-!subroutine do_ice_uvic(dto,h,julianday,secondsofday,lon,lat, &
-                    !    I_0,airt,airp,rh,u10,v10,precip,cloud, &
-                     !   TSS,SSS,rhowater,rho_0, &
-                     !   longwave_radiation_method,hum_method,fluxes_method, &
-                     !   ice_hi,ice_hs,ice_hm,Tice,Cond,rhoCp,Sint,dzi,zi, &
-                     !   Pari,Told,alb,heat,Fh,Ff,Fs,Sice_bulk,TopMelt,BotMelt,&
-                     !   TerMelt,TopGrowth,BotGrowth,Hmix,Aice_i,Asnow_i,Amelt_i,swr_0,precip_i,sfall_i,Qfluxes_uvic)
 ! DESCRIPTION:
 !!  Update the sea-ice conditions: if no ice, call open_water and determine 
 !!  new ice growth, if ice exists calculate growth or melt. The model has 
@@ -299,16 +292,10 @@ module stim_flato
       !! this julian day 
    integer, intent(in)     :: secondsofday 
       !! seconds for this day 
-  ! real(rk), intent(in)    :: lon    ! longitude for this point 
-  ! real(rk), intent(in)    :: lat ! latitude for this point 
    real(rk), intent(inout)  :: I_0   
       !! shortwave radiation at sea surface  
    real(rk), intent(in)     :: airt  
       !! 2m temperature
-  ! real(rk), intent(in)     :: airp  ! sea surface pressure
-  ! real(rk), intent(in)    :: rh    ! relative humidity 
-  ! real(rk), intent(inout)  :: u10   ! 10 m wind u-component
-  ! real(rk), intent(inout)  :: v10   ! 10 m wind v-component
    real(rk), intent(inout)  :: precip
       !! freshwater precipitation (m/s) 
   ! real(rk), intent(in)     :: cloud ! cloud cover
@@ -320,9 +307,6 @@ module stim_flato
       !! sea surface layer density 
    real(rk), intent(in)      :: rho_0 
       !! reference density 
-   !integer, intent(in)       :: longwave_radiation_method ! method for LW  
-   !integer, intent(in)       :: hum_method ! method for humidity
-  ! integer, intent(in)       :: fluxes_method ! method for fluxes
     
    ! !INPUT/OUTPUT PARAMETERS:
    real(rk), intent(inout)   :: ice_hi    
@@ -393,8 +377,6 @@ module stim_flato
    end interface
 
 ! LOCAL VARIABLES 
-   !real(rk)        :: h1,h2 
-
    real(rk)          :: dmsi ! dmsi - new ice formation at open water [kg m-2]
    integer           :: yy,mm,dd,j,k
    real(rk)          :: p_tmp ! p_tmp ! for rain to snow conversion
@@ -484,10 +466,6 @@ module stim_flato
 !  iteration on surface temperature
 !  This will update the ice temperature at each layer
 
-    !  call nr_iterate(hum_method,longwave_radiation_method,fluxes_method,nilay,&
-        !              airt,rh,cloud,I_0,Told,Tice,Pari,&
-         !             Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-         !             lat,u10,v10,precip,airp,evap,alb,Qfluxes_uvic)
       call nr_iterate(nilay,I_0,Told,Tice,Pari,&
                   Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi, &
                   Sint,evap,alb,Qfluxes_uvic)
@@ -1405,9 +1383,6 @@ module stim_flato
 ! !IROUTINE: 
 !
 ! !INTERFACE:
-!subroutine sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-     !                TTss,airt,rh,cloud,ice_hi,ice_hs,&
-     !                lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
    subroutine sebudget(TTss,ice_hi,ice_hs,evap,Qfluxes_uvic)
 !
 ! !DESCRIPTION:
@@ -1427,18 +1402,10 @@ module stim_flato
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-     ! integer, intent(in)       :: longwave_radiation_method ! method for LW
-     ! integer, intent(in)       :: hum_method ! method for humidity
-     ! integer, intent(in)       :: fluxes_method ! method for fluxes
+
       real(rk), intent(in)      :: TTss
-   !,airt,rh,cloud
-     ! real(rk), intent(in)      :: lat   ! latitude for this point
-     ! real(rk), intent(in)      :: u10   ! 10 m wind u-component
-     ! real(rk), intent(in)      :: v10   ! 10 m wind v-component
-     ! real(rk), intent(in)      :: airp  ! sea surface pressure
 ! !INOUT PARAMETERS:
-     ! real(rk), intent(inout)   :: precip! freshwater precipitation (m/s)
-      real(rk), intent(inout)   :: evap! freshwater evaporation (m/s)
+      real(rk), intent(inout)   :: evap   ! freshwater evaporation (m/s)
       real(rk), intent(inout)   :: ice_hi,ice_hs
 
    interface
@@ -1468,13 +1435,7 @@ module stim_flato
 !
 !...Calculate surface fluxes from meteorological data using bulk formulae
 !     Recalculate surface fluxes for sea ice conditions
-! NSnote  TTss is in Kelvin!!!
-
-    !  call humidity(hum_method,rh,airp,TTss-kelvin,airt) 
-     ! call longwave_radiation(longwave_radiation_method, &
-     !                     lat,TTss,airt+kelvin,cloud,qb)     
-    !  call airsea_fluxes(fluxes_method, &
-   !                    TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh)  
+! NSnote  TTss is in Kelvin!!! 
 
       call Qfluxes_uvic(TTss,qh,qe,qb)
 
@@ -1621,12 +1582,7 @@ module stim_flato
    subroutine nr_iterate(nilay,I_0,Told,Tice,Pari,&
                   Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi, &
                   Sint,evap,alb,Qfluxes_uvic)
-!subroutine nr_iterate(hum_method,longwave_radiation_method,fluxes_method,&
-                       ! nilay,airt,rh,cloud,I_0,Told,Tice,Pari,&
-                       ! Sice_bulk,ice_hi,ice_hs,dzi,Cond,rhoCp,zi,Sint,&
-                       ! lat,u10,v10,precip,airp,evap,alb,Qfluxes_uvic) !jpnote 
-
-                        !                        
+                      
 ! !DESCRIPTION:
 !
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
@@ -1647,17 +1603,7 @@ module stim_flato
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:  
-   !integer, intent(in)       :: longwave_radiation_method ! method for LW
-   !integer, intent(in)       :: hum_method ! method for humidity
-   !integer, intent(in)       :: fluxes_method ! method for fluxes
    integer, intent(in)         :: nilay
-   !real(rk), intent(in)      :: airt
-   !real(rk), intent(in)      :: rh
-   !real(rk), intent(in)      :: cloud 
-   !real(rk), intent(in)      :: lat   ! latitude for this point
-   !real(rk), intent(in)      :: u10   ! 10 m wind u-component
-   !real(rk), intent(in)      :: v10   ! 10 m wind v-component
-   !real(rk), intent(in)      :: airp  ! sea surface pressure
 ! !OUTPUT PARAMETERS:
    real(rk), intent(out)       :: Sice_bulk
    real(rk), intent(out)       :: Told(nilay+1)
@@ -1669,7 +1615,6 @@ module stim_flato
    real(rk), intent(inout)     :: Tice(nilay+1)
    real(rk), intent(inout)     :: ice_hi,ice_hs
    real(rk), intent(inout)     :: I_0
-  ! real(rk), intent(inout)     :: precip! freshwater precipitation (m/s)
    real(rk), intent(inout)     :: evap! freshwater evaporation (m/s)
 
 !
@@ -1720,9 +1665,6 @@ module stim_flato
    do nrit=1,5
 !      
 !......calculate surface energy budget terms
-     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                  !  Ts,airt,rh,cloud,ice_hi,ice_hs,&
-                  !  lat,u10,v10,precip,airp,evap,Qfluxes_uvic) !jpadded
       call sebudget(Ts,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
 !
@@ -1752,9 +1694,7 @@ module stim_flato
 !......finite difference
       dTemp=0.1
       Tsp=Ts+dTemp
-     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                  !  Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-                  !  lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+
       call sebudget(Tsp,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
 !
@@ -1765,9 +1705,7 @@ module stim_flato
          Cond,rhoCp,zi,Sint,Pari,Tice,I_0)
       fTsdT1=Tsp-Tice(1)
       Tsp=Ts-dTemp
-     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-             !       Tsp,airt,rh,cloud,ice_hi,ice_hs,&
-             !       lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+
       call sebudget(Tsp,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsp)
 !
@@ -1818,9 +1756,7 @@ module stim_flato
 !
 !....first, do initial guess again
    Ts1=Told(1)
-   !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-              !   Ts1,airt,rh,cloud,ice_hi,ice_hs,&
-                !    lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+  
    call sebudget(Ts1,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
 !
@@ -1836,9 +1772,7 @@ module stim_flato
    dTs=1.
    do ksearch=1,10
       Tsu=Ts1+dTs*float(ksearch-1)
-     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-        !            Tsu,airt,rh,cloud,ice_hi,ice_hs,&
-       !             lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+    
       call sebudget(Tsu,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsu)
 !
@@ -1857,9 +1791,7 @@ module stim_flato
       endif
 !
       Tsl=Ts1-dTs*float(ksearch-1)
-      !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-                !    Tsl,airt,rh,cloud,ice_hi,ice_hs,&
-              !      lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+     
       call sebudget(Tsl,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsl)
 !
@@ -1893,9 +1825,6 @@ module stim_flato
    do kb_uvic=1,20
 !......one end of interval
 
-      !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-       !             Ts1,airt,rh,cloud,ice_hi,ice_hs,&
-      !              lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
       call sebudget(Ts1,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts1)
 !
@@ -1907,9 +1836,7 @@ module stim_flato
       fTs1=Ts1-Tice(1)
 !......middle of interval
       Tsm=(Ts1+Ts2)/2.D+00
-     ! call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-           !         Tsm,airt,rh,cloud,ice_hi,ice_hs,&
-           !         lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+  
       call sebudget(Tsm,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Tsm)
 !
@@ -1960,9 +1887,7 @@ module stim_flato
    print*,'***!!!! Doing a forward time step anyway !!!***'
    Ts=Told(1)
  902 continue
-   !call sebudget(hum_method,longwave_radiation_method,fluxes_method,&
-             !    Ts,airt,rh,cloud,ice_hi,ice_hs,&
-             !       lat,u10,v10,precip,airp,evap,Qfluxes_uvic)
+
    call sebudget(Ts,ice_hi,ice_hs,evap,Qfluxes_uvic) 
       call  albedo_ice_uvic(fluxt,I_0,PenSW,alb,ice_hs,ice_hi,Ts)
 !
@@ -2475,7 +2400,7 @@ module stim_flato
 
 !-----------------------------------------------------------------------
 
-!  subroutine ice_interpol(var_grid2,var_grid1,nilay_int,nint_total) ! jpnote: include? 
+!  subroutine ice_interpol(var_grid2,var_grid1,nilay_int,nint_total) ! jpnote: not used
 
 !-----------------------------------------------------------------------
 
@@ -2484,7 +2409,7 @@ module stim_flato
 ! !IROUTINE: Cleaning up the mean flow variables
 !
 ! !INTERFACE:
-   subroutine clean_ice_uvic()  !still need to initialize/call this subroutine from outside this file
+   subroutine clean_ice_uvic() 
 !
 ! !DESCRIPTION:
 !  De-allocates all memory allocated via init\_icemodel()
@@ -2506,7 +2431,7 @@ module stim_flato
 !BOC
    !LEVEL1 'clean_ice_uvic'  
 
-   !LEVEL3 'closing ice.nc file...'  !commented for now  jpnote
+   !LEVEL3 'closing ice.nc file...' 
 !   call close_ncdf()
    
       return
