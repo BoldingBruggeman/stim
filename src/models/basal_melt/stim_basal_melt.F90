@@ -1,15 +1,9 @@
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: 'basal_melt' ice module
-!
-! !INTERFACE:
+!> The basal_melt ice model
+!>
+!> authors: Hans Burchard and Karsten Bolding
+
    module stim_basal_melt
-!
-! !DESCRIPTION:
-!  https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016JC012199
-!
-! !USES:
+
    use stim_variables, only: rk
    use stim_variables, only: Hice
    use stim_variables, only: z0 => z0i
@@ -20,95 +14,43 @@
    use stim_variables, only: Sb => S_melt
    use stim_variables, only: fH => ocean_ice_heat_flux
    use stim_variables, only: fS => ocean_ice_salt_flux
-!
+
    IMPLICIT NONE
-!  Default all is private.
+
    private
-!
-! !PUBLIC MEMBER FUNCTIONS:
+
    public init_stim_basal_melt, do_stim_basal_melt, clean_stim_basal_melt
-!
-! !PUBLIC DATA MEMBERS:
-!
-! !PRIVATE DATA MEMBERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard and Karsten Bolding
-!
-!EOP
+
 !-----------------------------------------------------------------------
 
    contains
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the ice variables
-!
-! !INTERFACE:
-   subroutine init_stim_basal_melt(ice_cover)
-!
-! !DESCRIPTION:
-!
-! !USES:
+   SUBROUTINE init_stim_basal_melt(ice_cover)
+     !! Initialize the basal_melt model with an ice-cover
+
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
+
    integer, intent(inout)  :: ice_cover
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
    integer                   :: rc
-!EOP
 !-----------------------------------------------------------------------
-!BOC
-   end subroutine init_stim_basal_melt
-!EOC
+
+   END SUBROUTINE init_stim_basal_melt
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: do the 'basal_melt' ice calculations
-!
-! !INTERFACE:
-   subroutine do_stim_basal_melt(h,ustar,T,S)
-!KB     subroutine fluxes_under_ice(ustar,T,S,h,z0,zb,Tb,Sb,vm,fH,fS)
-! include ustar in call ....
-! to be included in STIM - z0, zb=Hice*rhoi, Tb, Sb, vm, fH, fS
-!KB     subroutine fluxes_under_ice(h,T,S,ustar)
-!
-! !DESCRIPTION:
-!
-! !USES:
+
+   SUBROUTINE do_stim_basal_melt(h,ustar,T,S)
+
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   real(rk), intent(in) :: h      
-     !! upper layer thickness 
-   real(rk), intent(inout) :: ustar  
-     !! friction velocity ice/water interface
-   real(rk), intent(in) :: T      
-     !! upper layer temperature 
-   real(rk), intent(in) :: S      
-     !! upper layer salinity 
-!
-! !INPUT/OUTPUT PARAMETERS:
-!KB   integer, intent(inout)  :: ice_cover
-!KB   real(rk), intent(inout) :: Tw
 
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard and Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
+   real(rk), intent(in) :: h      
+     !! upper layer thickness [m]
+   real(rk), intent(inout) :: ustar  
+     !! friction velocity ice/water interface [m/s]
+   real(rk), intent(in) :: T
+     !! upper layer temperature [C]
+   real(rk), intent(in) :: S      
+     !! upper layer salinity [g/kg] 
+
 #if 0
    ! param. for freezing in-situ temperature eq. 
    real(rk) :: l1 =  -0.0575    
@@ -152,11 +94,7 @@
    real(rk) ::  s1,s2,s3,pp,qq
 
    real(rk) :: X,beta
-!EOP
 !-----------------------------------------------------------------------
-!BOC
-write(300,*) h,ustar,T,S
-!KBustar = 0.02
 #if 0
    X=0.55*exp(0.5*kappa*Bs)*sqrt(z0*ustar/nu)
 
@@ -208,38 +146,16 @@ write(300,*) h,ustar,T,S
       fS = 0.0
       vm = 0.0
    end if
-!KB
-write(350,*) Sb,Tb,vm,fH,fS
-
-   end subroutine do_stim_basal_melt
-!EOC
+   END SUBROUTINE do_stim_basal_melt
 
 !-----------------------------------------------------------------------
-!BOP
 !
-! !IROUTINE: Cleaning up the 'basal_melt' ice variables
+   SUBROUTINE clean_stim_basal_melt()
 !
-! !INTERFACE:
-   subroutine clean_stim_basal_melt()
-!
-! !DESCRIPTION:
-!
-! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-!EOP
 !-----------------------------------------------------------------------
-!BOC
-   !LEVEL2 'clean_stim_basal_melt'
 
-   end subroutine clean_stim_basal_melt
+   END SUBROUTINE clean_stim_basal_melt
 !EOC
 
 !-----------------------------------------------------------------------

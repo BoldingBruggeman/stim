@@ -1,26 +1,19 @@
 #include"cppdefs.h"
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: Main ice module
-!
-! !INTERFACE:
-   module ice
-!
-! !DESCRIPTION:
-!  This module provides all variables necessary for the ice
-!  calculation and also makes the proper initialisations.
-!
-! !USES:
+
+   MODULE gotm_stim_driver
+     !! This module provides the GOTM interface to STIM
+     !!
+     !! author: Karsten Bolding
+
+   use stim_variables, only: rk
    use stim_models
    IMPLICIT NONE
-!
+
    private
-!
-! !PUBLIC MEMBER FUNCTIONS:
+
    public init_ice, post_init_ice, do_ice, clean_ice
-   integer, public :: ice_cover=0 ! 0=no ice, 1=frazil ice, 2=solid ice
-!
+   integer, public :: ice_cover=0
+
    interface init_ice
       module procedure init_stim_yaml
    end interface
@@ -36,116 +29,90 @@
    interface clean_ice
       module procedure clean_stim
    end interface
-!
-! !PUBLIC DATA MEMBERS:
 
-!  the 'ice' namelist
-   integer, public                    :: ice_model
-!
-! !PRIVATE DATA MEMBERS:
+   integer, public :: ice_model
+     !! select ice model to apply
+
    ENUM, BIND(C)
-      ENUMERATOR :: SIMPLE=0
-      ENUMERATOR :: LEBEDEV=1
-      ENUMERATOR :: MYLAKE=2
-      ENUMERATOR :: WINTON=3
-      ENUMERATOR :: BASAL_MELT=4
+      ENUMERATOR :: NONE=0
+      ENUMERATOR :: SIMPLE=1
+      ENUMERATOR :: BASAL_MELT=2
+      ENUMERATOR :: LEBEDEV=3
+      ENUMERATOR :: MYLAKE=4
+      ENUMERATOR :: WINTON=5
    END ENUM
 
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
 !-----------------------------------------------------------------------
 
    contains
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the ice variables
-!
-! !INTERFACE:
-   subroutine init_stim_yaml()
-!
-! !DESCRIPTION:
-!
-! !USES:
+
+   SUBROUTINE init_stim_yaml()
+     !! Initialize configuration via entries in a YAML-file
+     !! Using the GOTM settings module
+
    use settings
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
+
    class (type_gotm_settings), pointer :: branch
-!EOP
+     !! GOTM settings variable
 !-----------------------------------------------------------------------
-!BOC
    LEVEL1 'init_stim_yaml'
-   ice_model    = 0
+   ice_model = 0
    branch => settings_store%get_typed_child('surface/ice')
    call branch%get(ice_model, 'model', 'model', default=0, &
                    options=&
                    (/option(0, 'none'), &
-                     option(1, 'Lebedev (1938)'), &
-                     option(2, 'MyLake'), &
-                     option(3, 'Winton'), &
-                     option(4, 'Basal_Melt')/))
+                     option(1, 'Simple'), &
+                     option(2, 'Basal_Melt'), &
+                     option(3, 'Lebedev (1938)'), &
+                     option(4, 'MyLake'), &
+                     option(5, 'Winton')/))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
    call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
                    'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
    LEVEL2 'done.'
 allocate(Tice(2))
-   return
-   end subroutine init_stim_yaml
-!EOC
+   END SUBROUTINE init_stim_yaml
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the air--sea interaction module \label{sec:init-air-sea}
-!
-! !INTERFACE:
-   subroutine post_init_stim(Ta,S)
-!
-! !DESCRIPTION:
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: Ta,S
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'post_init_stim'
 
-   if(Hice .gt. _ZERO_ .and. ice_model /= 0) then
+   SUBROUTINE post_init_stim(Ta,S)
+
+   real(rk), intent(in) :: Ta
+      !! Air temperature [C]
+   real(rk), intent(in) :: S
+      !! Salinity [g/kg]
+!-----------------------------------------------------------------------
+   LEVEL1 'post_init_stim()'
+
+   if(Hice .gt. 0._rk .and. ice_model /= 0) then
       ice_cover=2
    end if
 
    Tf = -0.0575_rk*S
 
    select case (ice_model)
-      case(0)
+      case(NONE)
          LEVEL1 'no ice'
+#if 0
+      case(SIMPLE)
+#endif
+#ifdef STIM_BASAL_MELT
+      case(BASAL_MELT)
+!KB         call init_stim_basal_melt()
+#endif
 #ifdef STIM_LEBEDEV
-      case(1)
+      case(LEBEDEV)
          call init_stim_lebedev(ice_cover)
 #endif
 #ifdef STIM_MYLAKE
-      case(2)
+      case(MYLAKE)
          call init_stim_mylake()
 #endif
 #ifdef STIM_WINTON
-      case(3)
+      case(WINTON)
 #if 1
 !KB         allocate(Tice(2))
          call init_stim_winton(Ta)
@@ -157,10 +124,6 @@ allocate(Tice(2))
          stop 'post_init_stim(): init_stim_winton()'
 #endif
 #endif
-#ifdef STIM_BASAL_MELT
-      case(4)
-!KB         call init_stim_basal_melt()
-#endif
       case default
          stop 'invalid ice model'
    end select
@@ -168,67 +131,71 @@ allocate(Tice(2))
    call init_stim_variables(ice_model)
 
    LEVEL2 'done.'
-   return
-   end subroutine post_init_stim
-!EOC
+   END SUBROUTINE post_init_stim
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: do the ice calculations
-!
-! !INTERFACE:
-   subroutine do_stim(dz,dt,ustar,Tw,S,Ta,precip,Qsw,Qfluxes)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(inout)    :: dz,dt,ustar,Ta,S,precip,Qsw
-!
-! !INPUT/OUTPUT PARAMETERS:
-   REALTYPE, intent(inout) :: Tw
+
+   SUBROUTINE do_stim(dz,dt,ustar,Tw,S,Ta,precip,Qsw,Qfluxes)
+
+   !! Arguments
+   real(rk), intent(inout)    :: dz
+      !! layer thickness [m]
+   real(rk), intent(inout)    :: dt
+      !! time step [s]
+   real(rk), intent(inout)    :: ustar
+      !! surface friction velocity [m/s]
+   real(rk), intent(inout) :: Tw
+      !! water temperature [C]
+   real(rk), intent(inout)    :: Ta
+      !! air temperature [C]
+   real(rk), intent(inout)    :: S
+      !! salinity [g/kg]
+   real(rk), intent(inout)    :: precip
+      !! precipitation [mm?]
+   real(rk), intent(inout)    :: Qsw
+      !! short wave radiation [W/m^2]
 !
    interface
-      subroutine Qfluxes(T,qh,qe,qb)
-         REALTYPE, intent(in)                 :: T
-         REALTYPE, intent(out)                :: qh,qe,qb 
-      end subroutine
-   end interface
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
-   REALTYPE                  :: Tf
+      SUBROUTINE Qfluxes(T,qh,qe,qb)
+         use, intrinsic :: iso_fortran_env
+         integer, parameter :: rk=real64
 
-!KB   REALTYPE                  :: ustar=0.001
-!EOP
+         real(rk), intent(in) :: T
+           !! temperature [C]
+         real(rk), intent(out) :: qh
+           !! latent heat [W/m^2]
+         real(rk), intent(out) :: qe
+           !! sensible heat [W/m^2]
+         real(rk), intent(out) :: qb 
+           !! net longwave radiation [W/m^2]
+      END SUBROUTINE
+   END interface
+
+   real(rk) :: Tf
 !-----------------------------------------------------------------------
-!BOC
    select case (ice_model)
-      case(0)
-         Tf = -0.0575*S
+      case(SIMPLE)
+         Tf = -0.0575_rk*S
          if (Tw .lt. Tf) then
             Tw = Tf
-            Hice = 0.1
+            Hice = 0.1_rk
          else
-            Hice = _ZERO_
+            Hice = 0._rk
          end if
+#ifdef STIM_BASAL_MELT
+      case(BASAL_MELT)
+         call do_stim_basal_melt(dz,ustar,Tw,S)
+#endif
 #ifdef STIM_LEBEDEV
-      case(1)
+      case(LEBEDEV)
          call do_stim_lebedev(ice_cover,dt,Tw,S,Ta,precip)
 #endif
 #ifdef STIM_MYLAKE
-      case(2)
+      case(MYLAKE)
          call do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
 #endif
 #ifdef STIM_WINTON
-      case(3)
+      case(WINTON)
          if (S .lt. 0.01) then
             LEVEL0 'The Winton ice model is developed for oceanic conditions.'
             LEVEL0 'Very low salinity is not supported - and the principle'
@@ -240,54 +207,26 @@ allocate(Tice(2))
             call do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
          end if
 #endif
-#ifdef STIM_BASAL_MELT
-      case(4)
-         call do_stim_basal_melt(dz,ustar,Tw,S)
-#endif
       case default
          stop 'invalid ice model'
    end select
-
-   return
-   end subroutine do_stim
-!EOC
+   END SUBROUTINE do_stim
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Cleaning up the mean flow variables
-!
-! !INTERFACE:
-   subroutine clean_stim()
-!
-! !DESCRIPTION:
-!  De-allocates all memory allocated via init\_ice()
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See log for the ice module
-!
-!EOP
+
+   SUBROUTINE clean_stim()
+     !!  De-allocates all memory allocated via init\_ice()
 !-----------------------------------------------------------------------
-!BOC
    LEVEL1 'clean_ice'
 
    LEVEL2 'de-allocation ice memory ...'
    LEVEL2 'done.'
-
-   return
-   end subroutine clean_stim
+   END SUBROUTINE clean_stim
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module ice
+   END MODULE gotm_stim_driver
 
 !-----------------------------------------------------------------------
 ! Copyright by the STIM-team under the GNU Public License - www.gnu.org

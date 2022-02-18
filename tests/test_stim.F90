@@ -1,24 +1,22 @@
-!
+!> program to test the ice models
+!>
+!> author: Karsten Bolding
    program test_stim
-!
-! !DESCRIPTION:
-!  program to test the ice models
-!
-! !USES:
+
    use stim_variables
    use stim_models
+
    implicit none
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
 
-! !LOCAL VARIABLES
    integer  :: i
-!EOP
 !-----------------------------------------------------------------------
-!BOC
 
-write(*,*) 'Ice models included:'
+write(*,*) 'Ice models included in compilation:'
+#ifdef STIM_BASAL_MELT
+   write(*,*) 'Basal_Melt: on'
+#else
+   write(*,*) 'Basal_Melt: off'
+#endif
 #ifdef STIM_LEBEDEV
    write(*,*) 'Lebedev: on'
 #else
@@ -36,7 +34,6 @@ write(*,*) 'Ice models included:'
 #endif
 
    end program test_stim
-!EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the STIM-team under the GNU Public License - www.gnu.org

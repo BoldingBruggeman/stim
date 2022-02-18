@@ -1,15 +1,15 @@
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: ice model module
-!
-! !INTERFACE:
    module stim_models
-!
-! !DESCRIPTION:
-!
-! !USES:
+     !! Collection of the various ice models in STIM
+     !!
+     !! Author: Karsten Bolding
+
    use stim_variables
+
+#if 0
+#ifdef STIM_OBSICE
+   use stim_obsice, only: init_stim_obsice, do_stim_obsice
+#endif
+#endif
 #ifdef STIM_BASAL_MELT
    use stim_basal_melt, only: init_stim_basal_melt, do_stim_basal_melt, clean_stim_basal_melt
 #endif
@@ -22,14 +22,7 @@
 #ifdef STIM_WINTON
    use stim_winton, only: init_stim_winton, do_stim_winton
 #endif
-#if 0
-#ifdef STIM_OBSICE
-   use stim_obsice, only: init_stim_obsice, do_stim_obsice
-#endif
-#endif
    IMPLICIT NONE
-!
-   public
 
 !-----------------------------------------------------------------------
 

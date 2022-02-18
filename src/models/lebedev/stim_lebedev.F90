@@ -1,77 +1,40 @@
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: 'lebedev' ice module
-!
-! !INTERFACE:
-   module stim_lebedev
-!
-! !DESCRIPTION:
-!  https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016JC012199
-!
-! !USES:
+!> The Lebedev ice model
+!>
+!> authors: Adolf Stips and Karsten Bolding
+
+   MODULE stim_lebedev
+
+  !! https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016JC012199
+
    use stim_variables, only: transmissivity, albedo_ice
    use stim_variables, only: rk, Hice, dHis, dHib, Tf, fdd
    use stim_variables, only: rho_ice, L_ice, ocean_ice_flux
+
    IMPLICIT NONE
-!  Default all is private.
+
    private
-!
-! !PUBLIC MEMBER FUNCTIONS:
+
    public init_stim_lebedev, do_stim_lebedev, clean_stim_lebedev
-!
-! !PUBLIC DATA MEMBERS:
-!
-! !PRIVATE DATA MEMBERS:
-!  Constants from Adolf Stips
+
+   !! Constants provided by Adolf Stips
    real(rk)           :: lebedev_fac=1.33_rk
    real(rk)           :: damp_leb_swr = -1.6_rk
    real(rk)           :: damp_leb_wind = -1.6_rk
    real(rk)           :: damp_leb_shf = -1.6_rk
    real(rk)           :: freeze_fac = -0.0575_rk
    real(rk)           :: lebedev_albedo = 0.545
-!  REALTYPE :: sens_ice_water = 46.9d0 ! sensible heta transfer
-! basal heat flux fixed at 20 W/m^2 according to Holland 1998
-!   REALTYPE :: sens_ice_water = 20.d0 ! sensible heta transfer
-!   REALTYPE :: dt_ice=3600.
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
+
 !-----------------------------------------------------------------------
 
    contains
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the ice variables
-!
-! !INTERFACE:
-   subroutine init_stim_lebedev(ice_cover)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
+   SUBROUTINE init_stim_lebedev(ice_cover)
+
    integer, intent(inout)  :: ice_cover
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
+
    integer                   :: rc
-!EOP
 !-----------------------------------------------------------------------
-!BOC
    if (Hice .gt. 0._rk) then
       fdd = (100._rk*Hice/lebedev_fac)**(1._rk/0.58_rk)
       ice_cover = 2
@@ -79,41 +42,20 @@
       fdd = 0._rk
       ice_cover = 0
    end if
-   return
-   end subroutine init_stim_lebedev
-!EOC
+   END SUBROUTINE init_stim_lebedev
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: do the 'lebedev' ice calculations
-!
-! !INTERFACE:
-   subroutine do_stim_lebedev(ice_cover,dt,Tw,S,Ta,precip)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
+
+   SUBROUTINE do_stim_lebedev(ice_cover,dt,Tw,S,Ta,precip)
+     !! Calculate ice thickness according to Lebedev 1938 
+
    real(rk), intent(in)    :: dt,Ta,S,precip
-!
-! !INPUT/OUTPUT PARAMETERS:
+
    integer, intent(inout)  :: ice_cover
    real(rk), intent(inout) :: Tw
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
+
    real(rk) :: x
-!EOP
 !-----------------------------------------------------------------------
-!BOC
-   ! calculate ice thickness according to Lebedev 1938 
    Tf = freeze_fac*S
    if (ice_cover .eq. 2) then
       ! calculate the cumulative freezing days
@@ -170,46 +112,20 @@
       ! estimate sensible heat flux between ice and ocean water shf = sens_ice_water * ( freezing_fac * sss ­ sst )
    end where
 #endif
-
-   return
-   end subroutine do_stim_lebedev
-!EOC
+   END SUBROUTINE do_stim_lebedev
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Cleaning up the 'lebedev' ice variables
-!
-! !INTERFACE:
-   subroutine clean_stim_lebedev()
-!
-! !DESCRIPTION:
-!
-! !USES:
+
+   SUBROUTINE clean_stim_lebedev()
+
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-!EOP
 !-----------------------------------------------------------------------
-!BOC
    !LEVEL2 'clean_stim_lebedev'
-
-   !LEVEL2 'de-allocation ice memory ...'
-   !LEVEL2 'done.'
-
-   return
-   end subroutine clean_stim_lebedev
-!EOC
+   END SUBROUTINE clean_stim_lebedev
 
 !-----------------------------------------------------------------------
 
-   end module stim_lebedev
+   END MODULE stim_lebedev
 
 !-----------------------------------------------------------------------
 ! Copyright by the STIM-team under the GNU Public License - www.gnu.org

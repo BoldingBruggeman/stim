@@ -1,110 +1,76 @@
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: stim_winton --- Winton thermodynamic ice model
-! \label{sec:stim_winton}
-!
-! !INTERFACE:
-   module stim_winton
-!
-! !DESCRIPTION:
-!  The model consists of a zero heat capacity snow layer overlying two equally
-!  thick sea ice layers. The upper ice layer has a variable heat capacity to
-!  represent brine pockets. The lower ice layer has a fixed heat capacity.
-!  The prognostic variables are hs (snow layer thickness), hi (ice layer
-!  thickness), T1 and T2, the upper and lower ice layer temperatures located
-!  at the midpoints of the layers. The ice model performs two functions, the
-!  first is to calculate the ice temperature and the second is to calculate
-!  changes in the thickness of ice and snow.
-!
-!------------------------------------------------------------------------------!
-!                                                                              !
-!                       THREE-LAYER VERTICAL THERMODYNAMICS                    !
-!                                                                              !
-! Reference:  M. Winton, 2000: "A reformulated three-layer sea ice model",     !
-!            Journal of Atmospheric and Oceanic Technology, 17, 525-531.       !
-!                                                                              !
-!                                                                              !
-!        -> +---------+ <- Ts - diagnostic surface temperature ( <= 0C )       !
-!       /   |         |                                                        !
-!     hs    |  snow   | <- 0-heat capacity snow layer                          !
-!       \   |         |                                                        !
-!        => +---------+                                                        !
-!       /   |         |                                                        !
-!      /    |         | <- T1 - upper 1/2 ice temperature; this layer has      !
-!     /     |         |         a variable (T/S dependent) heat capacity       !
-!   hi      |...ice...|                                                        !
-!     \     |         |                                                        !
-!      \    |         | <- T2 - lower 1/2 ice temp. (fixed heat capacity)      !
-!       \   |         |                                                        !
-!        -> +---------+ <- Tf - base of ice fixed at seawater freezing temp.   !
-!                                                                              !
-!                                                     Mike Winton (mw@gfdl.gov)!
-!------------------------------------------------------------------------------!
-!  Note: in this implementation the equations are multiplied by hi to improve
-!  thin ice accuracy
-!
-!  The code is based on the open source sea ice model included in the Modular
-!  Ocean Model.
-!
-! !USES:
+!> The winton ice model
+!>
+!> After Michael Winton
+!>
+!> authors: Karsten Bolding, Adolf Stips and Jesper Larsen
+
+   MODULE stim_winton
+
+!>
+!>  The model consists of a zero heat capacity snow layer overlying two equally
+!>  thick sea ice layers. The upper ice layer has a variable heat capacity to
+!>  represent brine pockets. The lower ice layer has a fixed heat capacity.
+!>  The prognostic variables are hs (snow layer thickness), hi (ice layer
+!>  thickness), T1 and T2, the upper and lower ice layer temperatures located
+!>  at the midpoints of the layers. The ice model performs two functions, the
+!>  first is to calculate the ice temperature and the second is to calculate
+!>  changes in the thickness of ice and snow.
+!>
+!>------------------------------------------------------------------------------
+!>                                                                              
+!>                       THREE-LAYER VERTICAL THERMODYNAMICS                    
+!>                                                                              
+!> Reference:  M. Winton, 2000: "A reformulated three-layer sea ice model",     
+!>            Journal of Atmospheric and Oceanic Technology, 17, 525-531.       
+!>                                                                              
+!>        -> +---------+ <- Ts - diagnostic surface temperature ( <= 0C )       
+!>       /   |         |                                                        
+!>     hs    |  snow   | <- 0-heat capacity snow layer                          
+!>       \   |         |                                                       
+!>        -> +---------+                                                        
+!>       /   |         |                                                        
+!>      /    |         | <- T1 - upper 1/2 ice temperature; this layer has      
+!>     /     |         |         a variable (T/S dependent) heat capacity       
+!>     \     |         |                                                       
+!>      \    |         | <- T2 - lower 1/2 ice temp. (fixed heat capacity)      
+!>       \   |         |                                                        
+!>        -> +---------+ <- Tf - base of ice fixed at seawater freezing temp.   
+!>                                                                              
+!>                                                     Mike Winton (mw@gfdl.gov)
+!>------------------------------------------------------------------------------
+
+!>  Note: in this implementation the equations are multiplied by hi to improve
+!>  thin ice accuracy
+!>
+!>  The code is based on the open source sea ice model included in the Modular
+!>  Ocean Model.
+!>
+
+!   hi      |...ice...|
+
    use stim_variables
    use ice_thm_mod
    IMPLICIT NONE
-!
-!  default: all is private.
+
    private
-!
-! !PUBLIC MEMBER FUNCTIONS:
-   public                              :: init_stim_winton
-   public                              :: do_stim_winton
-!
-! !PRIVATE DATA MEMBERS:
+
+   public :: init_stim_winton
+   public :: do_stim_winton
+
    real(rk), pointer :: Ts,T1,T2
    real(rk), pointer :: hi,hs,dh1,dh2
    real(rk), pointer :: trn
    real(rk)          :: pen
    real(rk), pointer :: tmelt,bmelt
    real(rk), pointer :: fb    ! heat flux from ocean to ice bottom (W/m^2)
-!
-! !REVISION HISTORY:
-!  Original author: Michael Winton
-!  Author(s): Adolf Stips, Jesper Larsen and Karsten Bolding
-!
-!-----------------------------------------------------------------------
 
    contains
 
+   SUBROUTINE init_stim_winton(Ta)
+
+   real(rk), intent(in) :: Ta
+     !! Air temperature [C]
 !-----------------------------------------------------------------------
-!BOP
-!
-! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_winton}
-!
-! !INTERFACE:
-!KB   subroutine init_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip)
-   subroutine init_stim_winton(Ta)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-   real(rk), intent(in)    :: Ta
-#if 0
-! !INPUT PARAMETERS:
-   real(rk), intent(in)    :: dz,dt,Ta,S,precip
-!
-! !INPUT/OUTPUT PARAMETERS:
-   integer, intent(inout)  :: ice_cover
-   real(rk), intent(inout) :: Tw
-#endif
-!
-! !LOCAL VARIABLES:
-!
-! !LOCAL PARAMETERS:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
    trn => transmissivity
    Ts => Tice_surface
    Ts = Ta
@@ -119,77 +85,47 @@
    tmelt => surface_ice_energy
    bmelt => bottom_ice_energy
    fb => ocean_ice_flux
-
-   return
-!EOC
-end subroutine init_stim_winton
+END SUBROUTINE init_stim_winton
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_winton}
-!
-! !INTERFACE:
-   subroutine do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
-!KB   subroutine do_ice_winton(dt,h,S,sst,T,hs,hi,Ti,surface_melt,bottom_melt)
-!
-! !DESCRIPTION:
-!  This subroutine updates the sea ice prognostic variables. The updated
-!  variables are upper ice layer temperature (T1), lower ice layer temperature
-!  (T2), snow thickness (hs), and ice thickness (hi).
-!
-!  The ice model performs this in two steps. First the temperatures are updated
-!  and secondly the changes in ice and snow thickness are calculated.
-!
-!  Any surplus energy that is not used for melting is returned in tmelt and
-!  bmelt.
-!
-!  Evaporation and bottom ablation formation are not included in
-!  this version of the model. Furthermore we do not keep an explicit water
-!  and salt budget for the sea ice and how that affects the water and salt
-!  budgets in the ocean.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
+
+   SUBROUTINE do_stim_winton(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+     !! This SUBROUTINE updates the sea ice prognostic variables. The updated
+     !! variables are upper ice layer temperature (T1), lower ice layer temperature
+     !! (T2), snow thickness (hs), and ice thickness (hi).
+     !!
+     !! The ice model performs this in two steps. First the temperatures are updated
+     !! and secondly the changes in ice and snow thickness are calculated.
+     !!
+     !! Any surplus energy that is not used for melting is returned in tmelt and
+     !! bmelt.
+     !!
+     !! Evaporation and bottom ablation formation are not included in
+     !! this version of the model. Furthermore we do not keep an explicit water
+     !! and salt budget for the sea ice and how that affects the water and salt
+     !! budgets in the ocean.
+
    real(rk), intent(in)    :: dz,dt,Ta,S,precip,Qsw
-!
-! !INPUT/OUTPUT PARAMETERS:
    integer, intent(inout)  :: ice_cover
    real(rk), intent(inout) :: Tw
-!
    interface
-      subroutine Qfluxes(T,qh,qe,qb)
+      SUBROUTINE Qfluxes(T,qh,qe,qb)
          integer, parameter                   :: rk = kind(1.d0)
          real(rk), intent(in)                 :: T
          real(rk), intent(out)                :: qh,qe,qb
-      end subroutine
+      END SUBROUTINE
    end interface
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-! !OUTPUT PARAMETERS:
-!
-! !LOCAL VARIABLES:
+
    real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
    real(rk)        :: evap  ! evaporation of ice (m/s)
    real(rk)        :: snow
-!
    real(rk)        :: A, B, dts=0.01
    real(rk)        :: qe,qh,qb
-!
    real(rk)        :: h1,h2
    real(rk)        :: ts_new
    real(rk)        :: frazil
    real(rk)        :: heat_to_ocn, h2o_to_ocn, h2o_from_ocn, snow_to_ice
-!
-! !LOCAL PARAMETERS:
-!EOP
 !-----------------------------------------------------------------------
-!BOC
-   !LEVEL0 'do_stim_winton'
    tmelt = 0._rk
    bmelt = 0._rk
 
@@ -234,14 +170,11 @@ hs = 0._rk
    else
       ice_cover = 0
    end if
-
-   return
-
-end subroutine do_stim_winton
+END SUBROUTINE do_stim_winton
 
 !-----------------------------------------------------------------------
 
-   end module stim_winton
+   END MODULE stim_winton
 
 !-----------------------------------------------------------------------
 ! Copyright by the GETM-team under the GNU Public License - www.gnu.org

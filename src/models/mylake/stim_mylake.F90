@@ -1,14 +1,9 @@
-!-----------------------------------------------------------------------
-!BOP
-!
-! !MODULE: 'mylake' ice module
-!
-! !INTERFACE:
-   module stim_mylake
-!
-! !DESCRIPTION:
-!
-! !USES:
+!> The MyLAKE ice model
+!>
+!> authors: Karsten Bolding (after ?? and ??)
+
+   MODULE stim_mylake
+
    use stim_variables, only: rk
    use stim_variables, only: albedo_ice, attenuation_ice
    use stim_variables, only: Cw,K_ice,L_ice,rho_ice
@@ -17,132 +12,55 @@
    use stim_variables, only: transmissivity
    use stim_variables, only: surface_ice_energy, bottom_ice_energy
    use stim_variables, only: ocean_ice_flux
+
    IMPLICIT NONE
-!  Default all is private.
+
    private
-!
-! !PUBLIC MEMBER FUNCTIONS:
+
    public init_stim_mylake, do_stim_mylake, clean_stim_mylake
-!
-! !PUBLIC DATA MEMBERS:
-!
-! !PRIVATE DATA MEMBERS:
+
    real(rk), pointer :: Tice
    real(rk), pointer :: ice_energy
-!   real(rk), pointer :: albedo, attenuation
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
 !-----------------------------------------------------------------------
 
    contains
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the ice variables
-!
-! !INTERFACE:
-   subroutine init_stim_mylake()
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-#if 0
-   integer, intent(in)                      :: namlst
-   character(len=*), intent(in)             :: fn
-#endif
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
-   integer                   :: rc
-!EOP
+   SUBROUTINE init_stim_mylake()
 !-----------------------------------------------------------------------
-!BOC
-   !LEVEL2 'init_stim_mylake'
-
-!  Read namelist from file.
-#if 0
-   open(namlst,file=fn,status='old',action='read',err=80)
-   !LEVEL2 'reading ice namelists..'
-   read(namlst,nml=ice,err=81)
-   close (namlst)
-   !LEVEL2 'done.'
-#endif
-
    Tice => Tice_surface
    ice_energy => bottom_ice_energy
+
 !KB   albedo => albedo_ice
 !KB   attenuation => attenuation_ice
-!  https://github.com/biogeochemistry/MyLake_public/blob/master/v12/v12_1/VAN_para_v12_1b.xls
-!  Phys_par(13) = lambda_i=5
+
+   ! https://github.com/biogeochemistry/MyLake_public/blob/master/v12/v12_1/VAN_para_v12_1b.xls
+   ! Phys_par(13) = lambda_i=5
    attenuation_ice = 0.7_rk
    attenuation_ice = 5.0_rk
    transmissivity = exp(-Hice*attenuation_ice)
-
-   !LEVEL2 'done.'
-
-   return
-#if 0
-80 FATAL 'I could not open: ',trim(fn)
-   stop 'init_ice'
-81 FATAL 'I could not read "ice" namelist'
-   stop 'init_ice'
-#endif
-
-   end subroutine init_stim_mylake
-!EOC
+   END SUBROUTINE init_stim_mylake
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: do the 'mylake' ice calculations
-!
-! !INTERFACE:
-   subroutine do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   real(rk), intent(in)    :: dz,dt,Ta,S,precip,Qsw
-!
-! !INPUT/OUTPUT PARAMETERS:
+
+   SUBROUTINE do_stim_mylake(ice_cover,dz,dt,Tw,S,Ta,precip,Qsw,Qfluxes)
+
+   real(rk), intent(in) :: dz,dt,Ta,S,precip,Qsw
    integer, intent(inout)  :: ice_cover
    real(rk), intent(inout) :: Tw
-!
-   interface
-      subroutine Qfluxes(T,qh,qe,qb)
-         integer, parameter                   :: rk = kind(1.d0)
-         real(rk), intent(in)                 :: T
-         real(rk), intent(out)                :: qh,qe,qb
-      end subroutine
-   end interface
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-! !LOCAL VARIABLES:
-   real(rk)                  :: max_frazil=0.03_rk
-   real(rk)                  :: alpha
-   real(rk)                  :: qh,qe,qb,Qflux
-!EOP
-!-----------------------------------------------------------------------
-!BOC
 
+   interface
+      SUBROUTINE Qfluxes(T,qh,qe,qb)
+         integer, parameter :: rk = kind(1.d0)
+         real(rk), intent(in) :: T
+         real(rk), intent(out) :: qh,qe,qb
+      END SUBROUTINE
+   end interface
+
+   real(rk) :: max_frazil=0.03_rk
+   real(rk) :: alpha
+   real(rk) :: qh,qe,qb,Qflux
+!-----------------------------------------------------------------------
    Tf = -0.0575*S
 
    ice_energy = (Tw-Tf)*dz*Cw + ocean_ice_flux*dt
@@ -162,13 +80,13 @@
       if (Hfrazil .lt. 0.) then  ! excess of melting energy returned to water temp
          Tw = -Hfrazil*rho_ice*L_ice/(dz*Cw)+Tf
          Hfrazil = 0._rk
-      endif
+      end if
 
    else ! Ice-cover - frazil or solid
 
       Tw=Tf
 
-!     surface of ice
+      ! surface of ice
       if (Ta .lt. Tf) then ! top ice growth when air temperature is below freezing pt
          dHis = Hice
          alpha = 1._rk/(10.*Hice)
@@ -182,10 +100,10 @@
          Qflux = qh+qe+qb
          dHis = -dt*(Qsw+Qflux)/(rho_ice*L_ice)
          Hice = Hice+min(0._rk,dHis)
-      endif
+      end if
       Hice = Hice+dt*precip
 
-!     bottom of ice - melting or freezing depending in flux direction
+      ! bottom of ice - melting or freezing depending in flux direction
       Hice = Hice + dHib
 
       if (Hice .le. 0.) then  ! excess of melting energy returned to water temp
@@ -197,45 +115,21 @@
       else
          albedo_ice = 0.3
          transmissivity = exp(-Hice*attenuation_ice)
-      endif
+      end if
    end if
-
-   return
-   end subroutine do_stim_mylake
-!EOC
+   END SUBROUTINE do_stim_mylake
 
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Cleaning up the 'mylake' ice variables
-!
 ! !INTERFACE:
-   subroutine clean_stim_mylake()
-!
-! !DESCRIPTION:
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the ice module
-!
-!EOP
+   SUBROUTINE clean_stim_mylake()
 !-----------------------------------------------------------------------
 !BOC
    !LEVEL2 'clean_stim_mylake'
-
-   return
-   end subroutine clean_stim_mylake
-!EOC
+   END SUBROUTINE clean_stim_mylake
 
 !-----------------------------------------------------------------------
 
-   end module stim_mylake
+   END MODULE stim_mylake
 
 !-----------------------------------------------------------------------
 ! Copyright by the STIM-team under the GNU Public License - www.gnu.org
