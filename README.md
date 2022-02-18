@@ -6,6 +6,12 @@ The aim is to separate the actual ice algoorithms from the hydrodynamic model su
 
 As a proof of concept two different models are included in this initial release. Also included is a driver for [GOTM](https://www.gotm.net).
 
+### Code documentation (alpha - and not always up to date)
+
+Source code [documentation](https://bolding-bruggeman.com/portfolio/eat/ford/)
+
+### API change
+
 The API for _do\_stim_ in the GOTM-driver has changed between the legacy and master branch:
 
 Legacy
