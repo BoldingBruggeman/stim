@@ -166,7 +166,7 @@ allocate(Tice(2))
            !! latent heat [W/m^2]
          real(rk), intent(out) :: qe
            !! sensible heat [W/m^2]
-         real(rk), intent(out) :: qb 
+         real(rk), intent(out) :: qb
            !! net longwave radiation [W/m^2]
       END SUBROUTINE
    END interface
