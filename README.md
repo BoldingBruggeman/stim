@@ -8,7 +8,7 @@ As a proof of concept two different models are included in this initial release.
 
 ### Code documentation (alpha - and not always up to date)
 
-Source code [documentation](https://bolding-bruggeman.com/portfolio/eat/ford/)
+Source code [documentation](https://bolding-bruggeman.com/portfolio/stim/ford/)
 
 ### API change
 
