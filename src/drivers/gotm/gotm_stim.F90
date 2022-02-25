@@ -34,7 +34,7 @@
      !! select ice model to apply
 
    ENUM, BIND(C)
-      ENUMERATOR :: NONE=0
+      ENUMERATOR :: NO_ICE=0
       ENUMERATOR :: SIMPLE=1
       ENUMERATOR :: BASAL_MELT=2
       ENUMERATOR :: LEBEDEV=3
@@ -59,16 +59,24 @@
      !! GOTM settings variable
 !-----------------------------------------------------------------------
    LEVEL1 'init_stim_yaml'
-   ice_model = 0
+   ice_model = SIMPLE
    branch => settings_store%get_typed_child('surface/ice')
-   call branch%get(ice_model, 'model', 'model', default=0, &
+   call branch%get(ice_model, 'model', 'model', default=SIMPLE, &
                    options=&
-                   (/option(0, 'none'), &
-                     option(1, 'Simple'), &
-                     option(2, 'Basal_Melt'), &
-                     option(3, 'Lebedev (1938)'), &
-                     option(4, 'MyLake'), &
-                     option(5, 'Winton')/))
+                   (/option(NO_ICE, 'no ice model', 'no_ice') ,option(SIMPLE, 'freezing temperature', 'Simple') &
+#ifdef STIM_BASAL_MELT
+                     ,option(BASAL_MELT, 'Basal Melt ', 'basal_melt') &
+#endif
+#ifdef STIM_LEBEDEV
+                     ,option(LEBEDEV, 'Lebedev (1938)', 'lebedev' ) &
+#endif
+#ifdef STIM_MYLAKE
+                     ,option(MYLAKE, 'Saloranta and Andersen (2007)', 'mylake') &
+#endif
+#ifdef STIM_WINTON
+                     ,option(WINTON, 'Michael Winton (2000)', 'winton') &
+#endif
+                     /))
    call branch%get(Hice, 'H', 'initial ice thickness', 'm',default=0._rk)
    call branch%get(ocean_ice_flux, 'ocean_ice_flux', &
                    'ocean->ice heat flux','W/m^2',default=0._rk, display=display_hidden)
@@ -94,11 +102,10 @@ allocate(Tice(2))
    Tf = -0.0575_rk*S
 
    select case (ice_model)
-      case(NONE)
+      case(NO_ICE)
          LEVEL1 'no ice'
-#if 0
       case(SIMPLE)
-#endif
+         LEVEL1 'Simple ice-model'
 #ifdef STIM_BASAL_MELT
       case(BASAL_MELT)
 !KB         call init_stim_basal_melt()
@@ -174,6 +181,7 @@ allocate(Tice(2))
    real(rk) :: Tf
 !-----------------------------------------------------------------------
    select case (ice_model)
+      case(NO_ICE)
       case(SIMPLE)
          Tf = -0.0575_rk*S
          if (Tw .lt. Tf) then
