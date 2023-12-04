@@ -25,8 +25,8 @@
 
 ! TK mod:  SLAB_ICE treatment modified to follow supersource
 !          (after Bryan 1969).  The conductive heat
-!           flux from ice to atmosphere is computed based on 
-!           an effective ice thickness which ensures a minimum 
+!           flux from ice to atmosphere is computed based on
+!           an effective ice thickness which ensures a minimum
 !           thickness of 1.7cm for the calculation.
 
 module ice_thm_mod
@@ -71,7 +71,7 @@ logical         :: SLAB_ICE = .false.   ! should we do old style GFDL slab ice?
 !
 ! slab ice specific parameters
 !
-real(rk), parameter :: CRIT_THICKNESS       = 1.00   
+real(rk), parameter :: CRIT_THICKNESS       = 1.00
 real(rk), parameter :: T_RANGE              = 10.0
 real(rk), parameter :: MIN_ICE_ALB          = 0.55   ! coupled model uses 0.55
 real(rk), parameter :: MAX_ICE_ALB          = 0.80
@@ -88,7 +88,7 @@ contains
 subroutine ice_thm_param(alb_sno_in, alb_ice_in, pen_ice_in, opt_dep_ice_in, &
                          slab_ice_in, t_range_melt_in, cm2_bugs_in, ks_in, &
                          h_lo_lim_in                                          )
-    real(rk), intent(in)      :: alb_sno_in, alb_ice_in, pen_ice_in 
+    real(rk), intent(in)      :: alb_sno_in, alb_ice_in, pen_ice_in
     real(rk), intent(in)      :: opt_dep_ice_in, t_range_melt_in
 logical, intent(in)   :: slab_ice_in
 logical, intent(in)   :: cm2_bugs_in
@@ -122,7 +122,6 @@ real(rk), intent(in   ) :: tfw ! seawater freezing temperature
 real(rk) :: as, ai, cs
 real(rk) :: thick_ice_alb, tcrit, fh
 
-
   if (SLAB_ICE) then
     tcrit = tfw - T_RANGE
        if (ts <= tcrit) then
@@ -132,7 +131,7 @@ real(rk) :: thick_ice_alb, tcrit, fh
        else
       thick_ice_alb = MAX_ICE_ALB + (MIN_ICE_ALB-MAX_ICE_ALB)*(ts-tcrit)/T_RANGE
        endif
-  
+
        if (hi >= crit_thickness) then
           alb = THICK_ICE_ALB
        else
@@ -152,7 +151,7 @@ real(rk) :: thick_ice_alb, tcrit, fh
 !         print *,'T_RANGE,=',T_RANGE, 'CRIT_THICKNESS=',CRIT_THICKNESS
 !         stop
 !      end if
-  
+
     return
   endif
 
@@ -224,9 +223,9 @@ real(rk), intent(inout) :: bmelt ! accumulated bottom melting energy (J/m^2)
     real(rk) :: tsf, k12, hi2, a10, b10, a1, b1, c1
 ! TK Mods:
 real(rk) :: hi_effective, hie
-real(rk) :: KI_over_eps = 1.7065e-2     ! 5/2.93 from Bryan (1969); 
-!                                 Value used in SS tsc.F (1.7065 cm) 
-!                                  converted to meters...         
+real(rk) :: KI_over_eps = 1.7065e-2     ! 5/2.93 from Bryan (1969);
+!                                 Value used in SS tsc.F (1.7065 cm)
+!                                  converted to meters...
 
   if (SLAB_ICE) then
     hi_effective = hi + KI_over_eps     ! TK added
@@ -266,7 +265,7 @@ real(rk) :: KI_over_eps = 1.7065e-2     ! 5/2.93 from Bryan (1969);
   C1  = DI*hi2*LI*TFI/(2*dt)
   t1 = -(sqrt(B1*B1-4*A1*C1)+B1)/(2*A1)
   ts = (K12*t1-A*hie)/(K12+B*hie)
-   
+
 !  if (ts > tsf) then       ! slightly different equation for melting conditions
   if (ts > -0.054) then       ! slightly different equation for melting conditions
     A1 = A10+K12
@@ -439,7 +438,7 @@ real(rk) h1o, h2o
     else
        heat_to_ocn = 0.0
     endif
-  
+
     h2o_to_ocn = h2o_to_ocn+h2o_from_ocn ! reset mark for leftover evap thru ice
     h2o_to_ocn = h2o_to_ocn-DI*hi-DS*hs  ! hs should be zero
     if (present(bablt)) bablt = bmelt/LI
@@ -566,7 +565,7 @@ real(rk), dimension(:,:,:), intent(inout) :: cn, hs, hi, t1, t2
                 hs(i,j,k) = cn(i,j,k)*hs(i,j,k)
                 t1(i,j,k) = (t1(i,j,k)-tmp/t1(i,j,k))*hi(i,j,k)
                 t2(i,j,k) = t2(i,j,k)*hi(i,j,k)
-             else 
+             else
                 cn(i,j,k) = 0.0
                 hi(i,j,k) = 0.0
                 hs(i,j,k) = 0.0

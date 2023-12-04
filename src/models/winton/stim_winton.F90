@@ -17,25 +17,25 @@
 !>  changes in the thickness of ice and snow.
 !>
 !>------------------------------------------------------------------------------
-!>                                                                              
-!>                       THREE-LAYER VERTICAL THERMODYNAMICS                    
-!>                                                                              
-!> Reference:  M. Winton, 2000: "A reformulated three-layer sea ice model",     
-!>            Journal of Atmospheric and Oceanic Technology, 17, 525-531.       
-!>                                                                              
-!>        -> +---------+ <- Ts - diagnostic surface temperature ( <= 0C )       
-!>       /   |         |                                                        
-!>     hs    |  snow   | <- 0-heat capacity snow layer                          
-!>       \   |         |                                                       
-!>        -> +---------+                                                        
-!>       /   |         |                                                        
-!>      /    |         | <- T1 - upper 1/2 ice temperature; this layer has      
-!>     /     |         |         a variable (T/S dependent) heat capacity       
-!>     \     |         |                                                       
-!>      \    |         | <- T2 - lower 1/2 ice temp. (fixed heat capacity)      
-!>       \   |         |                                                        
-!>        -> +---------+ <- Tf - base of ice fixed at seawater freezing temp.   
-!>                                                                              
+!>
+!>                       THREE-LAYER VERTICAL THERMODYNAMICS
+!>
+!> Reference:  M. Winton, 2000: "A reformulated three-layer sea ice model",
+!>            Journal of Atmospheric and Oceanic Technology, 17, 525-531.
+!>
+!>        -> +---------+ <- Ts - diagnostic surface temperature ( <= 0C )
+!>       /   |         |
+!>     hs    |  snow   | <- 0-heat capacity snow layer
+!>       \   |         |
+!>        -> +---------+
+!>       /   |         |
+!>      /    |         | <- T1 - upper 1/2 ice temperature; this layer has
+!>     /     |         |         a variable (T/S dependent) heat capacity
+!>     \     |         |
+!>      \    |         | <- T2 - lower 1/2 ice temp. (fixed heat capacity)
+!>       \   |         |
+!>        -> +---------+ <- Tf - base of ice fixed at seawater freezing temp.
+!>
 !>                                                     Mike Winton (mw@gfdl.gov)
 !>------------------------------------------------------------------------------
 
@@ -58,10 +58,11 @@
    public :: do_stim_winton
 
    real(rk), pointer :: Ts,T1,T2
-   real(rk), pointer :: hi,hs,dh1,dh2
+   real(rk), pointer :: hi,hs
    real(rk), pointer :: trn
    real(rk)          :: pen
    real(rk), pointer :: tmelt,bmelt
+   real(rk), pointer :: h2o_to_ocn  ! flux from ice to ocean (kg/m^2)
    real(rk), pointer :: fb    ! heat flux from ocean to ice bottom (W/m^2)
 
    contains
@@ -80,11 +81,10 @@
    T2 = Tf
    hs => Hsnow
    hi => Hice
-   dh1 => dHis
-   dh2 => dHib
    tmelt => surface_ice_energy
    bmelt => bottom_ice_energy
-   fb => ocean_ice_flux
+   h2o_to_ocn => ocean_ice_flux
+   fb => ocean_ice_heat_flux
 END SUBROUTINE init_stim_winton
 
 !-----------------------------------------------------------------------
@@ -118,14 +118,15 @@ END SUBROUTINE init_stim_winton
 
    real(rk)        :: I     ! solar absorbed by upper ice (W/m^2)
    real(rk)        :: evap  ! evaporation of ice (m/s)
-   real(rk)        :: snow
+   real(rk)        :: snow = 0._rk ! new snow - for now 0
    real(rk)        :: A, B, dts=0.01
    real(rk)        :: qe,qh,qb
    real(rk)        :: h1,h2
    real(rk)        :: ts_new
    real(rk)        :: frazil
-   real(rk)        :: heat_to_ocn, h2o_to_ocn, h2o_from_ocn, snow_to_ice
+   real(rk)        :: heat_to_ocn, h2o_from_ocn, snow_to_ice
 !-----------------------------------------------------------------------
+   frazil = 0._rk
    tmelt = 0._rk
    bmelt = 0._rk
 
@@ -149,7 +150,7 @@ END SUBROUTINE init_stim_winton
       !https://github.com/mom-ocean/MOM5/blob/08266af73b04d2334be4a52d0c45c174f447cee4/src/ice_sis/ice_model.F90
       call ice3lay_temp(hs,hi,t1,t2,ts_new,A,B,pen*I,Tf,fb,dt,tmelt,bmelt)
       ts = ts_new
- !     frazil = 0._rk
+      frazil = 0._rk
       Hfrazil = 0._rk
    else
       frazil = -(Tw-Tf)*dz*Cw
@@ -161,7 +162,6 @@ END SUBROUTINE init_stim_winton
                           tf, heat_to_ocn, h2o_to_ocn, h2o_from_ocn,       &
                           snow_to_ice)
    !                       snow_to_ice, bablt)
-!write(*,*) 'CC ',heat_to_ocn, h2o_to_ocn, h2o_from_ocn
    end if
 
 hs = 0._rk
