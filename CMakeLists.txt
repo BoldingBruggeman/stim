@@ -17,19 +17,6 @@ if(BUILD_SHARED_LIBS)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-#[[---
-option(STIM_EMBED_VERSION "Include Git version info" "ON")
-if(STIM_EMBED_VERSION)
-   add_custom_target(stim_version ALL
-      ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/src/stim_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/src/stim_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMENT "Retrieving description of last ICE commit..."
-      SOURCES ${PROJECT_SOURCE_DIR}/src/stim_version.F90.in "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
-      VERBATIM
-  )
-endif(STIM_EMBED_VERSION)
----]]
-
 option(STIM_BASAL_MELT "Basal melt ICE model" ON)
 option(STIM_LEBEDEV "Lebedev ICE model" ON)
 option(STIM_MYLAKE "MyLake ICE model" ON)
